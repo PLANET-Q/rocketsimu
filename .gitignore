@@ -1,3 +1,5 @@
 .DS_Store
 .vscode
-*.code-workspaceg
+__pycache__
+Thrust_curve/*
+*.code-workspace

@@ -57,14 +57,14 @@ class Rocket:
     def getCG(self, t=None):
         if t is None:
             t = self.t
-        moment_dry = self.__CG_dry * self.__mass_dry
-        moment_prop = self.__CG_prop * self.engine.propMass(t)
-        return float((moment_dry + moment_prop)/(self.__mass_dry + self.engine.propMass(t)))
+        moment_dry = self.CG_dry * self.mass_dry
+        moment_prop = self.CG_prop * self.engine.propMass(t)
+        return float((moment_dry + moment_prop)/(self.mass_dry + self.engine.propMass(t)))
 
     def getMass(self, t=None):
         if t is None:
             t = self.t
-        return self.__mass_dry + self.engine.propMass(t)
+        return self.mass_dry + self.engine.propMass(t)
     
     def getMOI(self, t=None):
         # 平衡軸の定理を使用したモーメント計算
@@ -74,7 +74,7 @@ class Rocket:
 
         CG = self.getCG(t)
         yz_unit = np.array([0, 1.0, 1.0])
-        MOI_body = self.__MOI_dry + self.__mass_dry*(CG - self.__CG_dry)**2 * yz_unit
+        MOI_body = self.MOI_dry + self.mass_dry*(CG - self.CG_dry)**2 * yz_unit
         MOI_prop = self.engine.propMOI(t) + self.engine.propMass(t)*(CG - self.CG_prop)**2 * yz_unit
         return (MOI_body + MOI_prop)
     
@@ -88,10 +88,12 @@ class Rocket:
     
     def joinDroguechute(self, droguechute):
         self.droguechute = droguechute
+        self.droguechute.joinRocket(self)
         pass
 
     def joinParachute(self, parachute):
         self.parachute = parachute
+        self.parachute.joinRocket(self)
         pass
     
     def hasParachute(self):
@@ -107,23 +109,23 @@ class Rocket:
         return self.droguechute.isDeploy()
     
     def __syncParamWithDict(self):
-        self.__height = self.__params['body_height']
+        self.height = self.__params['height']
 
-        self.__diameter = self.__params['body_diameter']
+        self.diameter = self.__params['diameter']
 
         # dry: 乾燥時,即ち推進剤無しの場合のパラメータのこと
-        self.__CG_dry = self.__params['CG_dry']
-        self.__mass_dry = self.__params['mass_dry']
+        self.CG_dry = self.__params['CG_dry']
+        self.mass_dry = self.__params['mass_dry']
 
         # ノーズ先端からのランチラグ位置
-        self.__lug_1st = self.__params['lug_1st']
-        self.__lug_2nd = self.__params['lug_2nd']
+        self.lug_1st = self.__params['lug_1st']
+        self.lug_2nd = self.__params['lug_2nd']
 
         # 乾燥時慣性モーメント
-        self.__MOI_dry = self.__params['MOI_dry']
+        self.MOI_dry = self.__params['MOI_dry']
 
         # Cm:モーメント係数 Cmp:ロール方向, Cmq:ピッチ/ヨー方向
-        self.__Cm = np.array([self.__params['Cmp'], self.__params['Cmq'], self.__params['Cmq']])
+        self.Cm = np.array([self.__params['Cmp'], self.__params['Cmq'], self.__params['Cmq']])
 
         # 推進剤重心のノーズ先端からの位置 [m]
-        self.__CG_prop = self.__params['CG_prop']
+        self.CG_prop = self.__params['CG_prop']

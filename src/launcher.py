@@ -32,7 +32,7 @@ class Launcher:
         self.rocket.x = np.zeros((3))
         self.rocket.v = np.zeros((3))
         self.rocket.omega = np.zeros((3))
-        self.rocket.atitude = q0
+        self.rocket.q = q0
     
     def is1stlugOff(self):
         if self.rocket is None:

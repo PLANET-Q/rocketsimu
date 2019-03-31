@@ -12,6 +12,7 @@ class TrajectorySolver:
             dt=0.05,
             max_t=1000.0):
         self.state = 1
+        self.apogee_flag = False
         self.env = env
         self.rocket = rocket
         self.dt = dt
@@ -31,7 +32,7 @@ class TrajectorySolver:
         u0 = np.r_[
                 np.zeros((3)),
                 np.zeros((3)),
-                quaternion.as_float_array(self.rocket.atitude),
+                quaternion.as_float_array(self.rocket.q),
                 np.zeros((3))
                 ]
         return u0
@@ -56,7 +57,7 @@ class TrajectorySolver:
         rocket.t = t
         rocket.x = x
         rocket.v = v
-        rocket.atitude = q
+        rocket.q = q
         rocket.omega = omega
 
         # ----------------------------
@@ -78,7 +79,7 @@ class TrajectorySolver:
         elif self.state <= 2 and t >= rocket.engine.thrust_cutoff_time:
             print('------------------')
             print('MECO at t=', t, '[s]')
-            if rocket.hasDrogueChute():
+            if rocket.hasDroguechute():
                 self.state = 3
             else:
                 self.state = 3.5
@@ -99,6 +100,13 @@ class TrajectorySolver:
         # dx_dt:地球座標系での地球から見たロケットの速度
         # v:機体座標系なので地球座標系に変換
         dx_dt = np.dot(Tbl.T, v)
+
+        if self.apogee_flag is False and dx_dt[2] < 0.0:
+            print('------------------')
+            print('apogee at t=', t, '[s]')
+            print('altitude:', x[2], '[m]')
+            rocket.t_apogee = t
+            self.apogee_flag = True
         
         # 重量・重心・慣性モーメント計算
         mass = rocket.getMass(t)
@@ -224,40 +232,49 @@ class TrajectorySolver:
 if __name__ == '__main__':
     import launcher
     import rocket
-    import engine
+    from engine import RocketEngine
     import air
     import wind
     import parachute
     from mpl_toolkits.mplot3d import Axes3D
     import matplotlib.pyplot as plt
     
-    rocket = rocket.Rocket()
-    engine = engine.RocketEngine()
-    rocket.height = 2.899
-    rocket.diameter = 0.118
-    rocket.mass_dry = 13.639
-    rocket.CG_dry = 1.730
-    rocket.MOI_dry = np.array([0.01, 17.06, 17.06])
-    rocket.Cm = np.array([-0.0, -4.0, -4.0])
-    rocket.lug_1st = 1.232
-    rocket.lug_2nd = 2.230
+    rocket_parameters = {
+        'height': 2.899,
+        'diameter': 0.118,
+        'mass_dry': 13.639,
+        'CG_dry': 1.730,
+        'MOI_dry': np.array([0.01, 17.06, 17.06]),
+        'Cm': np.array([-0.0, -4.0, -4.0]),
+        'lug_1st': 1.232,
+        'lug_2nd': 2.230
+    }
 
-    engine.mass_prop_init = 1.792
-    engine.MOI_init = np.array([0.001, 0.64, 0.64])
-    engine.loadThrust('Thrust_curve_csv/20190218_Thrust.csv', 0.0001)
+    engine_parameters = {
+        'MOI_prop': np.array([0.001, 0.64, 0.64]),
+        'mass_prop': 1.792
+    }
 
-    drogue = parachute.Parachute(1.2, 0.215, 18.5)
-    para = parachute.Parachute(1.2, 3.39, 60)
-    rocket.droguechute = drogue
-    rocket.parachute = para
+    rocket = Rocket(rocket_parameters)
+    engine = RocketEngine(engine_parameters)
 
-    rocket.joinEngine(engine, 2.216)
+    engine.loadThrust('Thrust_curve/20190218_Thrust.csv', 0.0001)
+
+    drogue = parachute.Parachute(1.2, 0.215)
+    para = parachute.Parachute(1.2, 3.39)
+    drogue.setFallTimeTrigger(1.0)
+    para.setAltitudeTrigger(250.0)
+
+    rocket.joinDroguechute(drogue)
+    rocket.joinParachute(para)
+
+    rocket.joinEngine(engine, position=2.216)
 
     wind = wind.WindConstant(np.array([7.,0.,0.]))
     air = air.Air(wind)
-    air.loadCd0('bin/Cd0.dat')
-    air.loadClalpha('bin/CLalpha.dat')
-    air.loadCP('bin/CPloc.csv')
+    air.loadCd0('data/Cd0.dat')
+    air.loadClalpha('data/Clalpha.dat')
+    air.loadCP('data/CPloc.csv')
     air.scalingCd0(0.5, mach=0.0)
     air.scalingClalpha(15.4, mach=0.0)
     air.scalingCP(2.243, mach=0.3, AoA_deg=2.0)
