@@ -34,21 +34,21 @@ class Launcher:
         self.rocket.omega = np.zeros((3))
         self.rocket.atitude = q0
     
-    def is1stlugOn(self):
+    def is1stlugOff(self):
         if self.rocket is None:
             raise AttributeError('Class valiable "rocket" must be assigned.')
         
         if self.rocket.x[2] > self.height_1stlug_off:
-            return False
-        else:
             return True
+        else:
+            return False
     
-    def is2ndlugOn(self):
+    def is2ndlugOff(self):
         if self.rocket is None:
             raise AttributeError('Class valiable "rocket" must be assigned.')
         
         if self.rocket.x[2] > self.height_2ndlug_off:
-            return False
-        else:
             return True
+        else:
+            return False
         

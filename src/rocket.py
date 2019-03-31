@@ -30,12 +30,12 @@ class Rocket:
             'mass_dry':0.0,
             'lug_1st':0.0,
             'lug_2nd':0.0,
-            'MOI_dry':[0.0, 0.0, 0.0],
+            'MOI_dry':np.array([0.0, 0.0, 0.0]),
             'Cmp':0.0,
             'Cmq':0.0,
             'CG_prop':0.0
         }
-        self.__syncParamToDict()
+        self.__syncParamWithDict()
 
         if params is not None:
             self.overwrite_parameters(params)
@@ -43,38 +43,48 @@ class Rocket:
         self.parachute = None
         self.droguechute = None
 
-        # NOTE: 座標系に依存するパラメータはこのクラスで適切か？
+        self.t_apogee = None
+        self.t = 0.0
         self.v = np.zeros((3))
         self.omega = np.zeros((3))
         self.x = np.zeros((3))
-        self.atitude = np.quaternion(0, 0, 0, 0)
+        self.q = np.quaternion(0, 0, 0, 0)
 
     def overwrite_parameters(self, params):
         self.__params.update(params)
-        self.__syncParamToDict()
+        self.__syncParamWithDict()
     
-    def totalCG(self, t):
+    def getCG(self, t=None):
+        if t is None:
+            t = self.t
         moment_dry = self.__CG_dry * self.__mass_dry
         moment_prop = self.__CG_prop * self.engine.propMass(t)
         return float((moment_dry + moment_prop)/(self.__mass_dry + self.engine.propMass(t)))
 
-    def totalMass(self, t):
+    def getMass(self, t=None):
+        if t is None:
+            t = self.t
         return self.__mass_dry + self.engine.propMass(t)
     
-    def totalMOI(self, t):
+    def getMOI(self, t=None):
         # 平衡軸の定理を使用したモーメント計算
         # ロール方向のモーメントには影響しないとしている(即ちエンジンに偏心がない)
-        CG = self.totalCG(t)
+        if t is None:
+            t = self.t
+
+        CG = self.getCG(t)
         yz_unit = np.array([0, 1.0, 1.0])
         MOI_body = self.__MOI_dry + self.__mass_dry*(CG - self.__CG_dry)**2 * yz_unit
         MOI_prop = self.engine.propMOI(t) + self.engine.propMass(t)*(CG - self.CG_prop)**2 * yz_unit
-        #return (MOI_body + MOI_prop) * yz_unit
         return (MOI_body + MOI_prop)
+    
+    def isOverApogee(self):
+        return self.t_apogee != None
 
     def joinEngine(self, engine, position):
         self.engine = engine
         self.CG_prop = position
-        self.CG_rocket_init = self.totalCG(0)
+        self.CG_rocket_init = self.getCG(0)
     
     def joinDroguechute(self, droguechute):
         self.droguechute = droguechute
@@ -87,10 +97,16 @@ class Rocket:
     def hasParachute(self):
         return self.parachute != None
     
-    def hasDrogueChute(self):
+    def isParachuteDeployed(self):
+        return self.parachute.isDeploy()
+    
+    def hasDroguechute(self):
         return self.droguechute != None
     
-    def __syncParamToDict(self):
+    def isDroguechuteDeployed(self):
+        return self.droguechute.isDeploy()
+    
+    def __syncParamWithDict(self):
         self.__height = self.__params['body_height']
 
         self.__diameter = self.__params['body_diameter']

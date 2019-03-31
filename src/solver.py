@@ -53,6 +53,7 @@ class TrajectorySolver:
         q = quaternion.as_quat_array(u[6:10])
         omega = u[10:]
 
+        rocket.t = t
         rocket.x = x
         rocket.v = v
         rocket.atitude = q
@@ -66,11 +67,11 @@ class TrajectorySolver:
         #         -> for coordinate rotation, input conj(q)
         Tbl = quaternion.as_rotation_matrix(np.conj(q))
 
-        if self.state == 1 and not launcher.is1stlugOn():
+        if self.state == 1 and launcher.is1stlugOff():
             print('------------------')
             print('1stlug off at t=', t, '[s]')
             self.state = 1.1
-        elif self.state == 1.1 and not launcher.is2ndlugOn():
+        elif self.state == 1.1 and launcher.is2ndlugOff():
             print('------------------')
             print('2ndlug off at t=', t, '[s]')
             self.state = 2
@@ -81,11 +82,11 @@ class TrajectorySolver:
                 self.state = 3
             else:
                 self.state = 3.5
-        elif self.state == 3 and t >= rocket.droguechute.t_deploy:
+        elif self.state == 3 and rocket.isDroguechuteDeployed():
             print('------------------')
             print('drogue chute deployed at t=', t, '[s]')
             self.state = 3.5
-        elif self.state == 3.5 and t >= rocket.parachute.t_deploy:
+        elif self.state == 3.5 and rocket.isParachuteDeployed():
             print('------------------')
             print('main parachute deployed at t=', t, '[s]')
             self.state = 4
@@ -100,15 +101,15 @@ class TrajectorySolver:
         dx_dt = np.dot(Tbl.T, v)
         
         # 重量・重心・慣性モーメント計算
-        mass = rocket.totalMass(t)
-        CG = rocket.totalCG(t)
-        MOI = rocket.totalMOI(t)
+        mass = rocket.getMass(t)
+        CG = rocket.getCG(t)
+        MOI = rocket.getMOI(t)
 
         # 慣性モーメントの微分
         # 現在は次の推力サンプル点でのモーメントとの平均変化率で近似している
         # (モーメントの変化は推力サンプル間隔)
         dt = 1.0e-3
-        MOI_next = rocket.totalMOI(t + dt)
+        MOI_next = rocket.getMOI(t + dt)
         dMOI_dt = (MOI_next - MOI)/dt
 
         # v_air: 機体座標系での相対風ベクトル
@@ -177,11 +178,11 @@ class TrajectorySolver:
         elif self.state == 3.5:
             # ドローグシュート展開時
             dv_dt = np.dot(Tbl, g) + env.Coriolis(v, Tbl) +\
-                rocket.droguechute.DrugForce(v_air, rho)/mass
+                rocket.droguechute.DragForce(v_air, rho)/mass
         elif self.state == 4:
             # メインパラシュート展開時
             dv_dt = np.dot(Tbl, g) + env.Coriolis(v, Tbl) +\
-                rocket.parachute.DrugForce(v_air, rho)/mass
+                rocket.parachute.DragForce(v_air, rho)/mass
 
         # ----------------------------
         #    3. Atitude
