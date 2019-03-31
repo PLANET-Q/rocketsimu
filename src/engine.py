@@ -18,24 +18,26 @@ class RocketEngine:
 
     Rocketクラスのインスタンスが保持している
     '''
-    def __init__(self, params_filename=None):
-        if params_filename is not None:
-            self.loadParam(params_filename)
+    def __init__(self, params=None):
+        self.__params = {
+            'MOI_prop': np.array([0.0, 0.0, 0.0]),
+            'mass_prop': 0.0
+        }
+        self.__syncParamsWithDict()
 
-    def loadParam(self, filename):
-        with open(filename, 'r') as f:
-            params = json.load(f)
-        
-        MOI_x = params['MOI_prop_x']
-        MOI_y = params['MOI_prop_y']
-        MOI_z = params['MOI_prop_z']
-
-        # 慣性モーメントと推進剤重量は推進剤流出に伴い変化する
-        self.MOI_init = np.array([MOI_x, MOI_y, MOI_z])
-        self.mass_prop_init = params['mass_prop']
+        if params is not None:
+            self.overwrite_parameters(params)
+    
+    def overwrite_parameters(self, params):
+        self.__params.update(params)
+        self.__syncParamsWithDict()
+    
+    def __syncParamsWithDict(self):
+        self.__MOI_init = self.__params['MOI_prop']
+        self.__mass_init = self.__params['mass_prop']
 
     def loadThrust(self, thrust_filename, thrust_dt, cutoff_freq=10.):
-        input_data = np.loadtxt(thrust_filename, comments='$', delimiter=',')
+        input_data = np.loadtxt(thrust_filename, comments=['$', '#', '%'], delimiter=',')
         thrust_raw = input_data[:, 1]
         self.thrust_dt = thrust_dt
         self.thrust_time_array = input_data[:, 0]
@@ -54,12 +56,10 @@ class RocketEngine:
         self.thrust_array[self.thrust_array < 0.0] = 0.0
 
         self.max_thrust = np.max(self.thrust_array)
-        print('max thrust ', self.max_thrust, '[N]')
         self.thrust_startup_time = np.min(self.thrust_time_array[self.thrust_array >= self.max_thrust*0.01])
-        print('thrust startup time', self.thrust_startup_time, '[s]')
         self.thrust_cutoff_time = np.max(self.thrust_time_array[self.thrust_array >= self.max_thrust*0.01])\
                                     - self.thrust_startup_time
-        print('thrust cutoff time(from startup)', self.thrust_cutoff_time, '[s]')
+
         self.thrust_array = self.thrust_array[self.thrust_time_array >= self.thrust_startup_time]
         self.thrust_time_array = self.thrust_time_array[self.thrust_time_array >= self.thrust_startup_time]
         self.thrust_time_array -= self.thrust_time_array[0]
@@ -68,8 +68,8 @@ class RocketEngine:
         self.impulse_array = np.cumsum(self.thrust_array * self.thrust_dt)
         self.impulse_total = self.impulse_array[-1]
         self.prop_remaining_rate_array = 1.0 - (self.impulse_array / self.impulse_total)
-        self.mass_prop_array = self.mass_prop_init * self.prop_remaining_rate_array
-        self.MOI_prop_array = self.MOI_init * np.resize(self.prop_remaining_rate_array, (self.thrust_n_samples, 3))
+        self.mass_prop_array = self.__mass_init * self.prop_remaining_rate_array
+        self.MOI_prop_array = self.__MOI_init * np.resize(self.prop_remaining_rate_array, (self.thrust_n_samples, 3))
 
         self.thrust_f = interp1d(self.thrust_time_array, self.thrust_array)
         self.impulse_f = interp1d(self.thrust_time_array, self.impulse_array)
@@ -77,61 +77,28 @@ class RocketEngine:
         self.MOI_prop_f = interp1d(self.thrust_time_array, self.MOI_prop_array, axis=0)
     
     def thrust(self, t):
-        #'''
         if t >= self.thrust_cutoff_time:
             return 0.0
         else:
             return self.thrust_f(t)
-        '''
-        # 演算子//は除余を切り捨てる割り算
-        idx = int(t / self.thrust_dt)
-        if idx >= self.thrust_n_samples:
-            return 0.0
-        else:
-            return self.thrust_array[idx]
-        '''
     
     def impulse(self, t):
-        #'''
         if t >= self.thrust_cutoff_time:
             return self.impulse_total
         else:
             return self.impulse_f(t)
-        '''
-        idx = int(t / self.thrust_dt)
-        if idx >= self.thrust_n_samples:
-            return self.impulse_total
-        else:
-            return self.impulse_array[idx]
-        '''
 
     def propMass(self, t):
-        #'''
         if t >= self.thrust_cutoff_time:
             return 0.0
         else:
             return self.mass_prop_f(t)
-        '''
-
-        idx = int(t / self.thrust_dt)
-        if idx >= self.thrust_n_samples:
-            return 0.0
-        else:
-            return self.mass_prop_array[idx]
-        '''
     
     def propMOI(self, t):
         if t >= self.thrust_cutoff_time:
             return np.zeros((3))
         else:
             return self.MOI_prop_f(t)
-        '''
-        idx = int(t / self.thrust_dt)
-        if idx >= self.thrust_n_samples:
-            return 0.0
-        else:
-            return self.MOI_prop_array[idx]
-        '''
 
 
 if __name__ == '__main__':
