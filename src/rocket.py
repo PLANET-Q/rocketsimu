@@ -8,7 +8,10 @@ __date__ = '09 Feb 2019'
 import numpy as np
 import quaternion
 import json
+import pandas as pd
+import os
 from engine import RocketEngine
+from air import standard_aero_coeff
 
 class Rocket:
     '''
@@ -33,7 +36,10 @@ class Rocket:
             'MOI_dry':np.array([0.0, 0.0, 0.0]),
             'Cmp':0.0,
             'Cmq':0.0,
-            'CG_prop':0.0
+            'CG_prop':0.0,
+            'Cd0': 0.0,
+            'Clalpha': 0.0,
+            'CP': 0.0
         }
         self.__syncParamWithDict()
 
@@ -108,6 +114,15 @@ class Rocket:
     def isDroguechuteDeployed(self):
         return self.droguechute.isDeploy()
     
+    def getCP(self, mach, alpha):
+        return standard_aero_coeff.CP(mach, alpha, self.CP)
+    
+    def getCl(self, mach, alpha):
+        return standard_aero_coeff.Cl(mach, alpha, self.Clalpha)
+    
+    def getCd(self, mach, alpha):
+        return standard_aero_coeff.Cd(mach, alpha, self.Cd0)
+    
     def __syncParamWithDict(self):
         self.height = self.__params['height']
 
@@ -129,3 +144,7 @@ class Rocket:
 
         # 推進剤重心のノーズ先端からの位置 [m]
         self.CG_prop = self.__params['CG_prop']
+
+        self.CP = self.__params['CP']
+        self.Cd0 = self.__params['Cd0']
+        self.Clalpha = self.__params['Clalpha']
