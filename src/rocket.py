@@ -48,6 +48,9 @@ class Rocket:
 
         self.parachute = None
         self.droguechute = None
+        self.launcher = None
+        self.enviroment = None
+        self.air = None
 
         self.t_apogee = None
         self.t = 0.0
@@ -86,6 +89,9 @@ class Rocket:
     
     def isOverApogee(self):
         return self.t_apogee != None
+
+    def setRocketOnLauncher(self):
+        self.launcher.setRocket(self)
 
     def joinEngine(self, engine, position):
         self.engine = engine

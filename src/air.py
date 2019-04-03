@@ -148,7 +148,10 @@ class _StandardAeroCoeff:
 
         # CP location 2D array (rows: Mach, columns: AOA)
         CP_array = np.array(df.iloc[1:,1:])
+
         self.CP_vs_MachAlpha = RectBivariateSpline(Mach_array, AOA_array, CP_array)
+        # Mach0.3, AoA=2degの圧力中心位置をCPスケーリングの基準とする
+        self.CP_scale_basevalue = float(self.CP_vs_MachAlpha(0.3, 2.0*np.pi/180.0))
 
         # Cd0のロード
         try:
@@ -157,6 +160,7 @@ class _StandardAeroCoeff:
             raise FileNotFoundError('Cd0 file ' + Cd0_path + 'was not found')
         
         self.Cd0_vs_Mach = interp1d(data[:, 0], data[:, 1], kind='linear')
+        self.Cd0_scale_basevalue = self.Cd0_vs_Mach(0.0)
 
         # Clalphaのロード
         try:
@@ -165,15 +169,16 @@ class _StandardAeroCoeff:
             raise FileNotFoundError('Clalpha file ' + Clalpha_path + 'was not found')
         
         self.Clalpha_vs_Mach = interp1d(data[:, 0], data[:, 1], kind='linear')
+        self.Clalpha_scale_basevalue = self.Clalpha_vs_Mach(0.0)
 
     def CP(self, mach, AoA, scale=1.0):
-        return float(self.CP_vs_MachAlpha(mach, AoA)) * scale
+        return float(self.CP_vs_MachAlpha(mach, AoA)) * (scale/self.CP_scale_basevalue)
     
     def Clalpha(self, mach, scale=1.0):
-        return self.Clalpha_vs_Mach(mach) * scale
+        return self.Clalpha_vs_Mach(mach) * (scale/self.Clalpha_scale_basevalue)
     
     def Cd0(self, mach, scale=1.0):
-        return self.Cd0_vs_Mach(mach) * scale
+        return self.Cd0_vs_Mach(mach) * (scale/self.Cd0_scale_basevalue)
     
     def Cl(self, mach, AoA, Clalpha_scale=1.0):
         Clalpha = self.Clalpha(mach, Clalpha_scale)

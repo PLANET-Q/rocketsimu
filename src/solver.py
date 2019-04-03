@@ -7,13 +7,11 @@ from rocket import Rocket
 class TrajectorySolver:
     def __init__(
             self,
-            env:Enviroment,
             rocket:Rocket,
             dt=0.05,
             max_t=1000.0):
         self.state = 1
         self.apogee_flag = False
-        self.env = env
         self.rocket = rocket
         self.dt = dt
         self.max_t = max_t
@@ -23,25 +21,21 @@ class TrajectorySolver:
                         ]
     
     def solve(self):
-        u0 = self.initialState()
+        u0 = np.r_[
+            self.rocket.x,
+            self.rocket.v,
+            quaternion.as_float_array(self.rocket.q),
+            self.rocket.omega
+        ]
+
         self.solution = odeint(self.__f_main, u0, self.t)
         return self.solution
     
-    def initialState(self):
-        self.env.launcher.setRocket(self.rocket)
-        u0 = np.r_[
-                np.zeros((3)),
-                np.zeros((3)),
-                quaternion.as_float_array(self.rocket.q),
-                np.zeros((3))
-                ]
-        return u0
-    
     def __f_main(self, u, t):
-        env = self.env
         rocket = self.rocket
-        air = env.air
-        launcher = env.launcher
+        env = rocket.enviroment
+        air = rocket.air
+        launcher = rocket.launcher
 
         if self.state == 5:
             return u*0.
@@ -134,9 +128,12 @@ class TrajectorySolver:
         _, _, rho, sound_speed = air.standard_air(x[2])
         mach = v_air_norm / sound_speed
 
-        Cd = air.getCd(mach, alpha)
-        Cl = air.getCl(mach, alpha)
-        CP = air.getCP(mach, alpha)
+        #Cd = air.getCd(mach, alpha)
+        #Cl = air.getCl(mach, alpha)
+        #CP = air.getCP(mach, alpha)
+        Cd = rocket.getCd(mach, alpha)
+        Cl = rocket.getCl(mach, alpha)
+        CP = rocket.getCP(mach, alpha)
 
         cosa = np.cos(alpha)
         sina = np.sin(alpha)
@@ -230,10 +227,10 @@ class TrajectorySolver:
         return du_dt
     
 if __name__ == '__main__':
-    import launcher
+    from launcher import Launcher
     import rocket
     from engine import RocketEngine
-    import air
+    from air import Air
     import wind
     import parachute
     from mpl_toolkits.mplot3d import Axes3D
@@ -247,7 +244,10 @@ if __name__ == '__main__':
         'MOI_dry': np.array([0.01, 17.06, 17.06]),
         'Cm': np.array([-0.0, -4.0, -4.0]),
         'lug_1st': 1.232,
-        'lug_2nd': 2.230
+        'lug_2nd': 2.230,
+        'Cd0': 0.5,
+        'Clalpha': 15.4,
+        'CP': 2.243
     }
 
     engine_parameters = {
@@ -270,19 +270,14 @@ if __name__ == '__main__':
 
     rocket.joinEngine(engine, position=2.216)
 
-    wind = wind.WindConstant(np.array([7.,0.,0.]))
-    air = air.Air(wind)
-    air.loadCd0('data/Cd0.dat')
-    air.loadClalpha('data/Clalpha.dat')
-    air.loadCP('data/CPloc.csv')
-    air.scalingCd0(0.5, mach=0.0)
-    air.scalingClalpha(15.4, mach=0.0)
-    air.scalingCP(2.243, mach=0.3, AoA_deg=2.0)
+    #wind = wind.WindConstant(np.array([7.,0.,0.]))
+    wind = wind.WindPower(2.0, 4.5, [5.0, 0.0, 0.0])
+    rocket.air = Air(wind)
+    rocket.launcher = Launcher(5, 150.0, 75.0)
+    rocket.enviroment = Enviroment(34.679730, 139.454987)
+    rocket.setRocketOnLauncher()
 
-    launcher = launcher.Launcher(5, 150.0, 75.0, rocket)
-    env = Enviroment(launcher, air, 34.679730, 139.454987)
-
-    solver = TrajectorySolver(env, rocket, max_t=100.0)
+    solver = TrajectorySolver(rocket, max_t=100.0)
     solution = solver.solve()
     
     v = solution[:, 3:6]

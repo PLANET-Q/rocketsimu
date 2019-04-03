@@ -1,28 +1,28 @@
 import numpy as np
 import quaternion
+from rocket import Rocket
 
 class Launcher:
     def __init__(
                 self,
                 length,
                 azimuth_deg,
-                elevation_deg,
-                rocket = None
+                elevation_deg
                 ):
         self.length = length
         self.azimuth = azimuth_deg * (np.pi / 180.0)
         self.elevation = elevation_deg * (np.pi / 180.0)
+        self.rocket = None
+    
+    def setRocket(self, rocket:Rocket):
         self.rocket = rocket
-        
         distance_1stlug_off =\
             self.length - (self.rocket.CG_rocket_init - self.rocket.lug_1st)
         self.height_1stlug_off = distance_1stlug_off * np.sin(self.elevation)
         distance_2ndlug_off =\
             self.length + (self.rocket.lug_2nd - self.rocket.CG_rocket_init)
         self.height_2ndlug_off = distance_2ndlug_off * np.sin(self.elevation)
-    
-    def setRocket(self, rocket):
-        self.rocket = rocket
+
         angle_z = (np.pi/2 - self.azimuth)
         qz = np.quaternion(np.cos(angle_z/2.0), 0.0, 0.0, np.sin(angle_z/2.0))
         angle_y = -self.elevation
@@ -51,4 +51,3 @@ class Launcher:
             return True
         else:
             return False
-        

@@ -9,14 +9,10 @@ from air import Air
 class Enviroment:
     def __init__(
             self,
-            launcher: Launcher,
-            air: Air,
             latitude,
             longitude,
             altitude=0
         ):
-        self.launcher = launcher
-        self.air = air
         self.latitude = latitude
         self.longitude = longitude
         self.alt_launcher = altitude
@@ -32,7 +28,7 @@ class Enviroment:
         # 射点緯度経度における楕円体半径[m]
         self.earth_r = self.earth_a * np.cos(np.deg2rad(self.latitude)) +\
                         self.earth_b * np.sin(np.deg2rad(self.latitude))
-        
+
         # 射点静止座標系→地球中心回転座標系への変換行列Tel
         sinlat = np.sin(np.deg2rad(self.latitude))
         coslat = np.cos(np.deg2rad(self.latitude))
@@ -43,7 +39,7 @@ class Enviroment:
             [   coslon, -sinlat*sinlon, coslat*sinlon],
             [      0.0,         coslat,        sinlat]
             ])
-        
+
         # 射点静止座標系における自転角速度ベクトル
         # 地球回転座標系での自転角速度を射点静止座標系に変換して求めている
         self.omega_earth_local = np.dot(LA.inv(self.Tel), np.array([0., 0., self.omega_earth]))
