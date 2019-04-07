@@ -133,7 +133,7 @@ class _StandardAeroCoeff:
         基準となるCP値、Clalpha値、Cd値をファイルからロードして正規化する
         '''
         rootpath = os.path.abspath(
-                    os.path.join(os.path.dirname(__file__), '../data'))
+                    os.path.join(os.path.dirname(__file__), './data'))
         CPloc_path = os.path.join(rootpath, 'CPloc.csv')
         Cd0_path = os.path.join(rootpath, 'Cd0.csv')
         Clalpha_path = os.path.join(rootpath, 'Clalpha.csv')
