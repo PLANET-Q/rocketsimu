@@ -56,6 +56,8 @@ class RocketEngine:
         self.thrust_array[self.thrust_array < 0.0] = 0.0
 
         self.max_thrust = np.max(self.thrust_array)
+        
+        '''
         self.thrust_startup_time = np.min(self.thrust_time_array[self.thrust_array >= self.max_thrust*0.01])
         self.thrust_cutoff_time = np.max(self.thrust_time_array[self.thrust_array >= self.max_thrust*0.01])\
                                     - self.thrust_startup_time
@@ -63,9 +65,15 @@ class RocketEngine:
         self.thrust_array = self.thrust_array[self.thrust_time_array >= self.thrust_startup_time]
         self.thrust_time_array = self.thrust_time_array[self.thrust_time_array >= self.thrust_startup_time]
         self.thrust_time_array -= self.thrust_time_array[0]
+        '''
+
+        self.thrust_time_array, self.thrust_array = trimThrust(self.thrust_array, self.thrust_time_array, threshold_rate=0.01)
+        self.thrust_startup_time = self.thrust_time_array[0]
+        self.thrust_cutoff_time = self.thrust_time_array[-1]
+        
         self.thrust_n_samples = len(self.thrust_array)
 
-        self.impulse_array = np.cumsum(self.thrust_array * self.thrust_dt)
+        self.impulse_array = getImpulseArray(self.thrust_array, self.thrust_dt)
         self.impulse_total = self.impulse_array[-1]
         self.prop_remaining_rate_array = 1.0 - (self.impulse_array / self.impulse_total)
         self.mass_prop_array = self.__mass_init * self.prop_remaining_rate_array
@@ -99,6 +107,34 @@ class RocketEngine:
             return np.zeros((3))
         else:
             return self.MOI_prop_f(t)
+
+
+def trimThrust(thrust_array, time_array, threshold_rate=0.01):
+    t_startup, t_cutoff = getThrustEffectiveTimeBoundary(
+                            thrust_array,
+                            time_array,
+                            threshold_rate
+                        )
+    
+    trimmed_time_array = time_array[time_array >= t_startup]
+    trimmed_time_array = trimmed_time_array[trimmed_time_array<=t_cutoff]
+    trimmed_time_array -= t_startup
+    trimmed_thrust_array = thrust_array[trimmed_time_array]
+    return trimmed_time_array, trimmed_thrust_array
+
+
+def getThrustEffectiveTimeBoundary(thrust_array, time_array, threshold_rate=0.01):
+    th_max = np.max(thrust_array)
+    threshold = th_max * threshold_rate
+    effective_time_array = time_array[thrust_array >= threshold]
+    startup_time = np.min(effective_time_array)
+    cutoff_time = np.max(effective_time_array)
+    return startup_time, cutoff_time
+
+
+def getImpulseArray(thrust_array, dt):
+    impulse_array = np.cumsum(thrust_array * dt)
+    return impulse_array
 
 
 if __name__ == '__main__':
