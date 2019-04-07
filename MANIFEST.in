@@ -1,0 +1,2 @@
+recursive-include rocketsimu/data *
+README.md
