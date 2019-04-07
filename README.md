@@ -13,6 +13,12 @@
 - pandas
 
 # Usage
+```
+cd [ダウンロード先フォルダ]
+git clone https://github.com/PLANET-Q/rocketsimu
+cd rocketsimu
+python setup.py install
+```
 
 # Future works/TODO
 - 95パーセンタイル統計風モデル
@@ -21,6 +27,9 @@
 - 地図上への弾道/落下分散プロット
 - GUI実装(ライブラリ→ツールキットへ)
 - 逆問題設計
+
+# Thanks/Acknowledgements
+- [shugok](https://github.com/shugok): シミュレーションの本質部分であるソルバ関数へ渡すdu_dt導出関数のアルゴリズムのほぼ全てを提供していただきました。
 
 # LICENSE
 このプロジェクトは[MITライセンス](https://github.com/PLANET-Q/TrajecSimu2/blob/master/LICENSE)のもと公開されています。以下の制限のもと利用可能です。
