@@ -19,5 +19,12 @@ setup(
     url='https://github.com/PLANET-Q/rocketsimu',
     license=license,
     packages=find_packages(exclude=('tests', 'docs')),
-    install_requirements=['numpy', 'scipy', 'pandas', 'numpy-quaternion']
+    package_data = {
+        'rocketsimu': [
+            "data/Cd0.csv",
+            "data/Clalpha.csv",
+            "data/CPloc.csv"
+            ]
+    },
+    install_requires=['numpy', 'scipy', 'pandas', 'numpy-quaternion']
 )

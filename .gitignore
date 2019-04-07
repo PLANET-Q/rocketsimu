@@ -5,3 +5,5 @@ Thrust_curve/*
 *.code-workspace
 *.egg-info
 notes/
+build/
+dist/
