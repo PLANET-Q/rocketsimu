@@ -1,9 +1,9 @@
 import numpy as np
 import numpy.linalg as LA
 import quaternion
-import wind
-from launcher import Launcher
-from air import Air
+from . import wind
+from .launcher import Launcher
+from .air import Air
 
 
 class Enviroment:

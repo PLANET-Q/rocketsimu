@@ -1,6 +1,6 @@
 import numpy as np
 import quaternion
-from rocket import Rocket
+from .rocket import Rocket
 
 class Launcher:
     def __init__(

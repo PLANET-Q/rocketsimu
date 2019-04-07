@@ -10,8 +10,8 @@ import quaternion
 import json
 import pandas as pd
 import os
-from engine import RocketEngine
-from air import standard_aero_coeff
+from .engine import RocketEngine
+from .air import standard_aero_coeff
 
 class Rocket:
     '''

@@ -1,8 +1,8 @@
 import numpy as np
 import quaternion
 from scipy.integrate import odeint
-from enviroment import Enviroment
-from rocket import Rocket
+from .enviroment import Enviroment
+from .rocket import Rocket
 
 class TrajectorySolver:
     def __init__(

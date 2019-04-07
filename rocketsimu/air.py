@@ -4,7 +4,7 @@ from scipy import interpolate
 import os
 from scipy.interpolate import RectBivariateSpline
 from scipy.interpolate import interp1d
-from wind import Wind
+from .wind import Wind
 
 class Air:
     def __init__(self, wind: Wind, T0=298.0, p0=1.013e5):

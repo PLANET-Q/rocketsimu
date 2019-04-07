@@ -8,7 +8,7 @@ __date__ = '09 Feb 2019'
 import pandas as pd
 import numpy as np
 import json
-from lpf import LPF
+from .lpf import LPF
 from scipy.interpolate import interp1d
 
 class RocketEngine:
@@ -75,13 +75,13 @@ class RocketEngine:
         self.impulse_f = interp1d(self.thrust_time_array, self.impulse_array)
         self.mass_prop_f = interp1d(self.thrust_time_array, self.mass_prop_array)
         self.MOI_prop_f = interp1d(self.thrust_time_array, self.MOI_prop_array, axis=0)
-    
+
     def thrust(self, t):
         if t >= self.thrust_cutoff_time:
             return 0.0
         else:
             return self.thrust_f(t)
-    
+
     def impulse(self, t):
         if t >= self.thrust_cutoff_time:
             return self.impulse_total
@@ -93,7 +93,7 @@ class RocketEngine:
             return 0.0
         else:
             return self.mass_prop_f(t)
-    
+
     def propMOI(self, t):
         if t >= self.thrust_cutoff_time:
             return np.zeros((3))

@@ -3,3 +3,5 @@
 __pycache__
 Thrust_curve/*
 *.code-workspace
+*.egg-info
+notes/
