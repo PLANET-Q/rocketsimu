@@ -116,10 +116,12 @@ def trimThrust(thrust_array, time_array, threshold_rate=0.01):
                             threshold_rate
                         )
     
-    trimmed_time_array = time_array[time_array >= t_startup]
-    trimmed_time_array = trimmed_time_array[trimmed_time_array<=t_cutoff]
+    mask1 = (time_array >= t_startup)
+    mask2 = (time_array <= t_cutoff)
+
+    trimmed_time_array = time_array[mask1 & mask2]
     trimmed_time_array -= t_startup
-    trimmed_thrust_array = thrust_array[trimmed_time_array]
+    trimmed_thrust_array = thrust_array[mask1 & mask2]
     return trimmed_time_array, trimmed_thrust_array
 
 
