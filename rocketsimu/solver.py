@@ -227,12 +227,12 @@ class TrajectorySolver:
         return du_dt
     
 if __name__ == '__main__':
-    from launcher import Launcher
-    import rocket
-    from engine import RocketEngine
-    from air import Air
-    import wind
-    import parachute
+    from .launcher import Launcher
+    from . import rocket
+    from .engine import RocketEngine
+    from .air import Air
+    from . import wind
+    from . import parachute
     from mpl_toolkits.mplot3d import Axes3D
     import matplotlib.pyplot as plt
     
