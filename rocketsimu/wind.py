@@ -69,7 +69,7 @@ class WindPower(Wind):
 
 class WindConstant(Wind):
     def __init__(self, wind=np.array([0., 0., 0.])):
-        self.wind_std = wind
+        self.wind_std = np.array(wind)
     def wind(self, h):
         return self.wind_std
 
@@ -78,6 +78,76 @@ class WindForecast(Wind):
     def wind(self, h):
         return 0
     pass
+
+
+def createWind(wind_model, params_dict):
+    '''
+    create instance of Wind class.  
+    INPUT
+        wind_model: name of wind model.
+            `constant`, `power` or `forecast` is currently available(v0.1.0).
+        params_dict: dict of parameters that is needed for the model
+
+        NOTE:ハイブリッド風モデルの場合、params_dictの2つのWindオブジェクトには以下の二種類の指定方法が利用できる
+        {
+            "wind0": <first wind model object>,
+            "wind1": <second wind model object>,
+            ...
+        }
+        or
+        {
+            "wind0": {
+                "wind_model": "[type of first wind model]",
+                "wind_parameters": {
+                    [params dictionary of first wind model]
+                    ...
+                }
+            },
+            "wind1": {
+                "wind_model": "[type of second wind model]",
+                "wind_parameters": {
+                    [params dictionary of second wind model]
+                    ...
+                }
+            },
+            ...
+        }
+    OUTPUT
+        wind instance
+    '''
+    if wind_model == 'constant':
+        return WindConstant(params_dict['wind_std'])
+    elif wind_model == 'power':
+        return WindPower(params_dict['z0'], params_dict['n'], params_dict['wind_std'])
+    elif wind_model == 'forecast':
+        return
+        #return WindForecast()
+    elif wind_model == 'hybrid':
+        '''
+        Hybridモデルで合成する2つの風モデル：wind0, wind1も
+        ディクショナリ型での指定ができ、再帰的に風モデルのインスタンスを生成する。
+        '''
+        if type(params_dict['wind0']) is dict:
+            w0_dict = params_dict['wind0']
+            w0 = createWind(w0_dict['wind_model'], w0_dict['wind_parameters'])
+        else:
+            w0 = params_dict['wind0']
+        
+        if type(params_dict['wind1']) is dict:
+            w1_dict = params_dict['wind1']
+            w1 = createWind(w1_dict['wind_model'], w1_dict['wind_parameters'])
+        else:
+            w1 = params_dict['wind1']
+
+        return HybridWind(w0,
+                    w1,
+                    params_dict['kind'],
+                    params_dict['border_height0'],
+                    params_dict['border_height1'],
+                    params_dict['weight0'],
+                    params_dict['weight1'])
+    else:
+        ValueError('Invalid wind model')
 
 
 if __name__ == '__main__':
