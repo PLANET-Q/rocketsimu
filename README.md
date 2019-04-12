@@ -41,11 +41,12 @@ pip uninstall rocketsimu
 ```
 
 # Usage
-
+[サンプルコード](https://github.com/PLANET-Q/rocketsimu/samples/sample.py)を参照。
+パラメータの設定については[howto_setting_params](https://github.com/PLANET-Q/rocketsimu/docs/howto_setting_params.md)を参照してください。
 
 # Future works/TODO
 - インターフェース実装
-- コードリファクタリング
+- **コードリファクタリング**
 - 95パーセンタイル統計風モデル
 - 予報風対統計風誤差統計モデル
 - 落下分散導出
@@ -57,6 +58,6 @@ pip uninstall rocketsimu
 - [shugok](https://github.com/shugok): シミュレーションの本質部分であるソルバ関数へ渡すdu_dt導出関数のアルゴリズムのほぼ全てを提供していただきました。
 
 # LICENSE
-このプロジェクトは[MITライセンス](https://github.com/PLANET-Q/TrajecSimu2/blob/master/LICENSE)のもと公開されています。以下の制限のもと利用可能です。
+このプロジェクトは[MITライセンス](https://github.com/PLANET-Q/rocketsimu/blob/master/LICENSE)のもと公開されています。以下の制限のもと利用可能です。
 - このプロジェクト内のソースコードは誰でも自由に利用/改変/再頒布可能ですが，このスクリプトを利用するソースコード内の重要な箇所に著作権表示と[本ライセンス表示](https://github.com/PLANET-Q/TrajecSimu2/blob/master/LICENSE)を付ける必要があります。  
 - **このプロジェクト内のソースコードについて作者/著作権者は一切の責任を負いません**
