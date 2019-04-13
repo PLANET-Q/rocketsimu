@@ -152,28 +152,3 @@ def createWind(wind_model, params_dict):
                     params_dict['weight1'])
     else:
         ValueError('Invalid wind model')
-
-
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
-
-    wind_direction = np.deg2rad(90.0)
-    wind_std = np.array([-np.sin(wind_direction), -np.cos(wind_direction)])
-    wind_power = WindPower(2, 14, wind_std)
-    wind_fore = WindForecast()
-    wind_hybrid = HybridWind(wind_power, wind_fore, border_height0=100., border_height1=200.)
-    alt_axis = np.arange(0, 500)
-
-    wind_array = np.zeros((len(alt_axis), 2))
-    for i in range(len(alt_axis)):
-        wind_array[i] = wind_hybrid(alt_axis[i])
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot(wind_array[:, 0], wind_array[:, 1], alt_axis)
-    ax.set_xlabel('u')
-    ax.set_ylabel('v')
-    ax.set_zlabel('altitude')
-    fig.show()
-    plt.show()
