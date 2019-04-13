@@ -1,5 +1,5 @@
 import numpy as np
-
+import scipy.interpolate as interpolate
 
 class Wind:
     def __call__(self, h):
@@ -75,9 +75,13 @@ class WindConstant(Wind):
 
 
 class WindForecast(Wind):
+    def __init__(self, forecast_filename):
+        input_data = np.loadtxt(forecast_filename, comments=['#','$','%'], delimiter=',')
+        self.alt_axis = input_data[:, 0]
+        self.wind_vec_array = input_data[:, 1:]
+        self._w = interpolate.interp1d(self.alt_axis, self.wind_vec_array, axis=0)
     def wind(self, h):
-        return 0
-    pass
+        return self._w(h)
 
 
 def createWind(wind_model, params_dict):
