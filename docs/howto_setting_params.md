@@ -1,6 +1,6 @@
 # パラメータJSONファイルのセッティング
 For version 0.1.0
-# サンプルのパラメータ
+# パラメータのサンプル
 [sample.json](https://github.com/PLANET-Q/rocketsimu/samples/sample_parameters.json)を参照
 
 # 解説
@@ -67,10 +67,10 @@ For version 0.1.0
         "fall_time": 1.0
     },
 
-    "para_trigger": {
-        "flight_time": 1800,
-        "altitude": 300
-    },
+"para_trigger": {
+    "flight_time": 1800,
+    "altitude": 300
+},
 
 ```
 # 風モデルの指定方法
