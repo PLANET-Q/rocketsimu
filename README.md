@@ -41,8 +41,8 @@ pip uninstall rocketsimu
 ```
 
 # Usage
-[サンプルコード](https://github.com/PLANET-Q/rocketsimu/samples/sample.py)を参照。
-パラメータの設定については[howto_setting_params](https://github.com/PLANET-Q/rocketsimu/docs/howto_setting_params.md)を参照してください。
+[サンプルコード](https://github.com/PLANET-Q/rocketsimu/blob/master/samples/sample.py)を参照。
+パラメータの設定については[howto_setting_params](https://github.com/PLANET-Q/rocketsimu/blob/master/docs/howto_setting_params.md)を参照してください。
 
 # Future works/TODO
 - インターフェース実装

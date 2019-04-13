@@ -1,7 +1,7 @@
 # パラメータJSONファイルのセッティング
 For version 0.1.0
 # パラメータのサンプル
-[sample.json](https://github.com/PLANET-Q/rocketsimu/samples/sample_parameters.json)を参照
+[sample.json](https://github.com/PLANET-Q/rocketsimu/blob/master/samples/sample_parameters.json)を参照
 
 # 解説
 
@@ -44,17 +44,18 @@ For version 0.1.0
 `$`, `#`, `%`を行頭につけることでコメント行とみなせる.
 
 ```
-#t[s], Thrust[N],
-0.0000, 0.000,
-0.0001, 0.003,
+#t[s], Thrust[N]
+0.0000, 0.000
+0.0001, 0.003
 ....
 6.0000, 0.000
 ```
 # パラシュート展開条件の指定方法
 ドローグ/メインパラシュート展開条件は, それぞれ`drogue_trigger:{}`, `para_trigger:{}`の`{}`内で設定できる.
 設定できる展開条件は以下の三種類である. 複数の条件を設定する場合はカンマ`,`で区切って条件を追加する.この場合, いずれかの条件が1つでも満たされた時にパラシュート展開する. 
+
 |展開条件の名前|内容|
-|-|-|
+----|----
 |"flight_time"|離床からの経過時間[s]|
 |"fall_time"|頂点時刻からの経過時間[s]|
 |"altitude"|ランチャ位置に対する高度(落下時)[m]|
@@ -83,8 +84,9 @@ For version 0.1.0
 
 `wind_parameters`には指定した風モデルに必要なパラメータをディクショナリ(`{}`の中にデータを指定する形式)形式で指定する.  
 各モデルに対して指定すべきパラメータは以下の通りである.
+
 |風モデル|指定パラメータ|説明|
-|-|-|-|
+----|----|----
 |constant|wind_std| 定常風の風ベクトルをx,y,zの順のリストで指定する|
 |power|z0|基準高度
 ||n|べき法則の係数
