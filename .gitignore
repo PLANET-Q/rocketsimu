@@ -1,3 +1,9 @@
 .DS_Store
 .vscode
-*.code-workspaceg
+__pycache__
+Thrust_curve/*
+*.code-workspace
+*.egg-info
+notes/
+build/
+dist/
