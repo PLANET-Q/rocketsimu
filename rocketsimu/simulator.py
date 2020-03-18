@@ -19,10 +19,10 @@ __date__ = '8 Apl 2019'
 シミュレーションインターフェース関数をまとめたスクリプト
 '''
 
-def simulate(parameters_filename):
+def simulate(parameters, cons_out=True):
     '''
     INPUT
-        parameters_filename: ロケットのパラメータが格納されているJSONファイル名
+        parameters: ロケットのパラメータが格納されているDictまたはファイル名
     OUTPUT
         タプル(t, x, v, q, omega)
         t: time arrray
@@ -32,8 +32,11 @@ def simulate(parameters_filename):
         omega: 各時刻における機体座標系各軸周りの各速度ベクトル
     '''
 
-    with open(parameters_filename, 'r') as f:
-        params = json.load(f)
+    if type(parameters) is str:
+        with open(parameters, 'r') as f:
+            params = json.load(f)
+    elif type(parameters) is dict:
+        params = parameters
     
     rocket = Rocket(params)
     engine = RocketEngine(params)
@@ -74,7 +77,7 @@ def simulate(parameters_filename):
 
     rocket.setRocketOnLauncher()
 
-    solver = TrajectorySolver(rocket, dt=params['dt'], max_t=params['t_max'])
+    solver = TrajectorySolver(rocket, dt=params['dt'], max_t=params['t_max'], cons_out=cons_out)
     
     solution = solver.solve().T
 
