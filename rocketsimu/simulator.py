@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 import json
+import numpy as np
 from .enviroment import Enviroment
 from .launcher import Launcher
 from .rocket import Rocket
@@ -86,5 +87,48 @@ def simulate(parameters_filename):
     v_sol = solution[3:6].T[solver.t < t_landing].T
     q_sol = solution[6:10].T[solver.t < t_landing].T
     omega_sol = solution[10:].T[solver.t < t_landing].T
+
+    # MaxQ, MaxMach, MaxVなどの導出
+    speed = np.linalg.norm(v_sol, axis=0)
+    a_speed = np.zeros((len(t_valid)))
+    rho = np.zeros((len(t_valid)))
+    p = np.zeros((len(t_valid)))
+    T = np.zeros((len(t_valid)))
+    for i, alt in enumerate(x_sol[2]):
+        T[i], p[i], rho[i], a_speed[i] = rocket.air.standard_air(alt)
+    mach = speed / a_speed
+
+    Q = 0.5 * rho * speed**2
+    Q_max_idx = np.argmax(Q)
+    Mach_max_idx = np.argmax(mach)
+    v_max_idx = np.argmax(speed)
+
+    # max Q log
+    solver.solver_log['MaxQ']={
+        'Q': Q[Q_max_idx],
+        't': t_valid[Q_max_idx],
+        'p': p[Q_max_idx],
+        'T': T[Q_max_idx],
+        'mach': mach[Q_max_idx]
+    }
+
+    # max mach log
+    solver.solver_log['MaxMach']={
+        'Q': Q[Mach_max_idx],
+        't': t_valid[Mach_max_idx],
+        'p': p[Mach_max_idx],
+        'T': T[Mach_max_idx],
+        'mach': mach[Mach_max_idx]
+    }
+
+    # max V log
+    solver.solver_log['MaxV']={
+        'Q': Q[v_max_idx],
+        't': t_valid[v_max_idx],
+        'p': p[v_max_idx],
+        'T': T[v_max_idx],
+        'speed': speed[v_max_idx],
+        'mach': mach[v_max_idx]
+    }
 
     return t_valid, x_sol, v_sol, q_sol, omega_sol, solver.solver_log

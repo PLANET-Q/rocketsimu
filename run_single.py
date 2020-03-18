@@ -38,7 +38,7 @@ if __name__ == '__main__':
             json.dump(log, f, indent=4, cls=NumpyEncoder)
 
     # プロット
-    if args.showplot:
+    if args.showplot == 'true':
         # tを ~MECO, MECO~パラ展開, パラ展開~ランディング に切り分け
         t_1stlug = log['1stlug_off']['t']
         t_2ndlug = log['2ndlug_off']['t']

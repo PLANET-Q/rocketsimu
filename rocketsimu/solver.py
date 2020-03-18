@@ -174,7 +174,8 @@ class TrajectorySolver:
                     (Cl*cosa + Cd*sina)*np.cos(phi)]
                     )
         rocket_xarea = (rocket.diameter/2)**2 * np.pi
-        air_force = 0.5 * rho * v_air_norm**2. * rocket_xarea * (-1 * air_coeff)
+        air_force = 0.5 * rho * v_air_norm**2.0 * rocket_xarea * (-1 * air_coeff)
+
         air_moment_CG = np.cross(np.array([CG - CP, 0.0, 0.0]), air_force)
         l = np.array([rocket.diameter, rocket.height, rocket.height])
         air_moment_damping = 0.25 * rho * v_air_norm * rocket.Cm * (l**2) * rocket_xarea * omega
