@@ -123,7 +123,7 @@ if __name__ == '__main__':
             regulations = json.load(f)
         
         idx=0
-        scatter = np.zeros((len(speed_array), len(azimuth_array), 2))
+        scatter = np.zeros((len(speed_array), len(azimuth_array)+1, 2))
         for r, speed in enumerate(speed_array):
             for theta, azimuth in enumerate(azimuth_array):
                 wind_std = [-speed * np.sin(azimuth), -speed * np.cos(azimuth), 0]
@@ -131,6 +131,7 @@ if __name__ == '__main__':
                     data = json.load(f)
                 scatter[r, theta] = np.array(data['landing']['x'])[:2]
                 idx += 1
+            scatter[r, -1] = scatter[r, 0] # 楕円の始端と終端を結ぶ
 
         print('scatter:', scatter)
         for item in regulations:
