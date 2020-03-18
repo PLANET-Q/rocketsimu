@@ -11,7 +11,7 @@ with open('LICENSE', encoding="utf-8") as f:
 
 setup(
     name='rocketsimu',
-    version='0.1.0',
+    version='0.2.0',
     description='6-dof High-power rocket simulator.',
     long_description=readme,
     author='Yusuke Yamamoto',
@@ -26,5 +26,5 @@ setup(
             "data/CPloc.csv"
             ]
     },
-    install_requires=['numba', 'numpy', 'scipy', 'pandas']
+    install_requires=['numba', 'numpy', 'scipy', 'pandas', 'simplekml', 'matplotlib']
 )

@@ -124,6 +124,7 @@ class TrajectorySolver:
             if self.cons:
                 print('------------------')
                 print('landing at t=', t, '[s]')
+                print('x:', x)
 
             self.add_solver_log('landing', t=t, x=x, v=v, q=q, omega=omega)
             self.state = 5
