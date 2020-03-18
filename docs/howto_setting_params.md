@@ -29,7 +29,8 @@ For version 0.1.0
 |azimuth|ランチャ方位角[deg]|
 |elev_angle|ランチャ仰角[deg]|
 |rail_length|ランチャレール長[m]|
-|t_max|シミュレーションする最長時間[s].|
+|dt|シミュレーションの時間間隔[s]|
+|t_max|シミュレーションする最長時間[s]|
 |is_drogue|ドローグシュートを使用するかどうか. `true` または`false` が指定可能|
 |Cd_drogue|ドローグシュートの抗力係数. `is_drogue` が `false` の場合無視される|
 |S_drogue|ドローグシュートの有効面積. `is_drogue` が `false` の場合無視される|

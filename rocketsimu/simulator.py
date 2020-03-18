@@ -73,13 +73,18 @@ def simulate(parameters_filename):
 
     rocket.setRocketOnLauncher()
 
-    solver = TrajectorySolver(rocket, max_t=params['t_max'])
+    solver = TrajectorySolver(rocket, dt=params['dt'], max_t=params['t_max'])
     
     solution = solver.solve().T
 
-    x_sol = solution[:3]
-    v_sol = solution[3:6]
-    q_sol = solution[6:10]
-    omega_sol = solution[10:]
+    # landingまでの時刻を切り出し
+    t_landing = solver.solver_log['landing']['t']
+    t_valid = solver.t[solver.t < t_landing]
 
-    return solver.t, x_sol, v_sol, q_sol, omega_sol, solver.solver_log
+    # landingまでに切り出し
+    x_sol = solution[:3].T[solver.t < t_landing].T
+    v_sol = solution[3:6].T[solver.t < t_landing].T
+    q_sol = solution[6:10].T[solver.t < t_landing].T
+    omega_sol = solution[10:].T[solver.t < t_landing].T
+
+    return t_valid, x_sol, v_sol, q_sol, omega_sol, solver.solver_log

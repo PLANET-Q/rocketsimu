@@ -24,8 +24,8 @@
     "elev_angle": 80,
     "rail_length": 10.0,
 
+    "dt": 0.01,
     "t_max": 1000.0,
-
 
     "is_drogue": true,
     "Cd_drogue": 1.0,
