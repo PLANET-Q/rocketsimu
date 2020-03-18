@@ -15,6 +15,7 @@ class TrajectorySolver:
         self.rocket = rocket
         self.dt = dt
         self.max_t = max_t
+        self.solver_log = {}
         self.t = np.r_[
                         np.arange(0.0,3.,self.dt/10),
                         np.arange(3., self.max_t, self.dt)
@@ -28,8 +29,12 @@ class TrajectorySolver:
             self.rocket.omega
         ]
 
+        self.solver_log = {}
         self.solution = odeint(self.__f_main, u0, self.t)
         return self.solution
+    
+    def add_solver_log(self, name:str, **kwargs):
+        self.solver_log[name] = kwargs
     
     def __f_main(self, u, t):
         rocket = self.rocket
@@ -65,29 +70,53 @@ class TrajectorySolver:
         if self.state == 1 and launcher.is1stlugOff():
             print('------------------')
             print('1stlug off at t=', t, '[s]')
+            print('altitude:', x[2], '[m]')
+
+            self.add_solver_log('1stlug_off', t=t, x=x, v=v, q=q, omega=omega)
             self.state = 1.1
         elif self.state == 1.1 and launcher.is2ndlugOff():
             print('------------------')
             print('2ndlug off at t=', t, '[s]')
+            print('altitude:', x[2], '[m]')
+
+            self.add_solver_log('2ndlug_off', t=t, x=x, v=v, q=q, omega=omega)
             self.state = 2
         elif self.state <= 2 and t >= rocket.engine.thrust_cutoff_time:
             print('------------------')
             print('MECO at t=', t, '[s]')
+            print('altitude:', x[2], '[m]')
+
+            self.add_solver_log('MECO', t=t, x=x, v=v, q=q, omega=omega)
+            self.state = 3
+        elif self.state == 3:
             if rocket.hasDroguechute():
-                self.state = 3
+                if rocket.isDroguechuteDeployed():
+                    print('------------------')
+                    print('drogue chute deployed at t=', t, '[s]')
+                    print('altitude:', x[2], '[m]')
+
+                    self.add_solver_log('drogue', t=t, x=x, v=v, q=q, omega=omega)
+                    self.state = 3.5 # ドローグ展開
             else:
-                self.state = 3.5
-        elif self.state == 3 and rocket.isDroguechuteDeployed():
-            print('------------------')
-            print('drogue chute deployed at t=', t, '[s]')
-            self.state = 3.5
+                if rocket.isParachuteDeployed():
+                    print('------------------')
+                    print('main parachute deployed at t=', t, '[s]')
+                    print('altitude:', x[2], '[m]')
+
+                    self.add_solver_log('para', t=t, x=x, v=v, q=q, omega=omega)
+                    self.state = 4
         elif self.state == 3.5 and rocket.isParachuteDeployed():
-            print('------------------')
-            print('main parachute deployed at t=', t, '[s]')
-            self.state = 4
+                print('------------------')
+                print('main parachute deployed at t=', t, '[s]')
+                print('altitude:', x[2], '[m]')
+
+                self.add_solver_log('para', t=t, x=x, v=v, q=q, omega=omega)
+                self.state = 4
         elif self.state > 1 and self.state < 5 and x[2] < 0.0 and t > rocket.engine.thrust_startup_time:
             print('------------------')
             print('landing at t=', t, '[s]')
+
+            self.add_solver_log('landing', t=t, x=x, v=v, q=q, omega=omega)
             self.state = 5
             return u*0
 
@@ -100,6 +129,8 @@ class TrajectorySolver:
             print('apogee at t=', t, '[s]')
             print('altitude:', x[2], '[m]')
             rocket.t_apogee = t
+
+            self.add_solver_log('apogee', t=t, x=x, v=v, q=q, omega=omega)
             self.apogee_flag = True
         
         # 重量・重心・慣性モーメント計算

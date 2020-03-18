@@ -43,13 +43,14 @@ def simulate(parameters_filename):
     para = Parachute(params['Cd_para'], params['S_para'])
 
     # set trigger of the droguechute's deployment
-    drogue_triggers_dict = params['drogue_trigger']
-    if 'flight_time' in drogue_triggers_dict:
-        drogue.setFlightTimeTrigger(drogue_triggers_dict['flight_time'])
-    if 'fall_time' in drogue_triggers_dict:
-        drogue.setFallTimeTrigger(drogue_triggers_dict['fall_time'])
-    if 'altitude' in drogue_triggers_dict:
-        drogue.setAltitudeTrigger(drogue_triggers_dict['altitude'])
+    if params['is_drogue'] is True:
+        drogue_triggers_dict = params['drogue_trigger']
+        if 'flight_time' in drogue_triggers_dict:
+            drogue.setFlightTimeTrigger(drogue_triggers_dict['flight_time'])
+        if 'fall_time' in drogue_triggers_dict:
+            drogue.setFallTimeTrigger(drogue_triggers_dict['fall_time'])
+        if 'altitude' in drogue_triggers_dict:
+            drogue.setAltitudeTrigger(drogue_triggers_dict['altitude'])
 
     # set trigger of the parachute's deployment
     para_triggers_dict = params['para_trigger']
@@ -60,7 +61,8 @@ def simulate(parameters_filename):
     if 'altitude' in para_triggers_dict:
         para.setAltitudeTrigger(para_triggers_dict['altitude'])
 
-    rocket.joinDroguechute(drogue)
+    if params['is_drogue'] is True:
+        rocket.joinDroguechute(drogue)
     rocket.joinParachute(para)
     rocket.joinEngine(engine, position=params['CG_prop'])
 
@@ -80,4 +82,4 @@ def simulate(parameters_filename):
     q_sol = solution[6:10]
     omega_sol = solution[10:]
 
-    return solver.t, x_sol, v_sol, q_sol, omega_sol
+    return solver.t, x_sol, v_sol, q_sol, omega_sol, solver.solver_log

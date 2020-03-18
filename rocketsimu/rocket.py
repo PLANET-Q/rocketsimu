@@ -101,13 +101,11 @@ class Rocket:
     def joinDroguechute(self, droguechute):
         self.droguechute = droguechute
         self.droguechute.joinRocket(self)
-        pass
 
     def joinParachute(self, parachute):
         self.parachute = parachute
         self.parachute.joinRocket(self)
-        pass
-    
+
     def hasParachute(self):
         return self.parachute != None
     
