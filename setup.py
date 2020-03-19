@@ -26,5 +26,5 @@ setup(
             "data/CPloc.csv"
             ]
     },
-    install_requires=['numba', 'numpy', 'scipy', 'pandas', 'simplekml', 'matplotlib']
+    install_requires=['numba', 'numpy', 'numpy-quaternion', 'scipy', 'pandas', 'simplekml', 'matplotlib']
 )
