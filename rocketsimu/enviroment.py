@@ -43,12 +43,12 @@ class Enviroment:
         # 射点静止座標系における自転角速度ベクトル
         # 地球回転座標系での自転角速度を射点静止座標系に変換して求めている
         self.omega_earth_local = np.dot(LA.inv(self.Tel), np.array([0., 0., self.omega_earth]))
-    
+
     def g(self, h):
         # TODO: 重力を高度hの関数にする。
         # 緯度経度から標高を算出する必要がある
         return np.array([0.0, 0.0, -9.81])
-    
+
     def Coriolis(self, v_body, Tbl, mass=1.0):
         # =======================================
         # INPUT:  v_body = velocity in body coord.

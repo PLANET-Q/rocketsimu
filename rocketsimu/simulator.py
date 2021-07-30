@@ -1,5 +1,7 @@
 # -*- coding:utf-8 -*-
 import json
+import os
+import yaml
 from .enviroment import Enviroment
 from .launcher import Launcher
 from .rocket import Rocket
@@ -32,47 +34,43 @@ def simulate(parameters_filename):
     '''
 
     with open(parameters_filename, 'r') as f:
-        params = json.load(f)
-    
-    rocket = Rocket(params)
-    engine = RocketEngine(params)
-    engine.loadThrust(params['thrust_curve_csv'], params['thrust_dt'])
+        param_ext = os.path.splitext(parameters_filename)
+        if param_ext == '.json':
+            params = json.load(f)
+        elif param_ext == '.yml' or param_ext == '.yaml':
+            params = yaml.load(f)
 
-    if params['is_drogue'] is True:
-        drogue = Parachute(params['Cd_drogue'], params['S_drogue'])
-    para = Parachute(params['Cd_para'], params['S_para'])
+    rocket = Rocket(params['rocket'])
+    engine = RocketEngine(params['engine'])
+    engine.loadThrust(params['engine']['thrust_curve_csv'], params['engine']['thrust_dt'])
 
-    # set trigger of the droguechute's deployment
-    drogue_triggers_dict = params['drogue_trigger']
-    if 'flight_time' in drogue_triggers_dict:
-        drogue.setFlightTimeTrigger(drogue_triggers_dict['flight_time'])
-    if 'fall_time' in drogue_triggers_dict:
-        drogue.setFallTimeTrigger(drogue_triggers_dict['fall_time'])
-    if 'altitude' in drogue_triggers_dict:
-        drogue.setAltitudeTrigger(drogue_triggers_dict['altitude'])
+    parachute_params = params['parachutes']
+    if 'drogue' in parachute_params:
+        drogue_params = parachute_params['drogue']
+        drogue = Parachute(drogue_params['Cd'], drogue_params['S'])
+        # set trigger of the droguechute's deployment
+        drogue.set_triggers(drogue_params['trigger'])
 
+    main_para_params = parachute_params['para']
+    para = Parachute(main_para_params['Cd'], main_para_params['S'])
     # set trigger of the parachute's deployment
-    para_triggers_dict = params['para_trigger']
-    if 'flight_time' in para_triggers_dict:
-        para.setFlightTimeTrigger(para_triggers_dict['flight_time'])
-    if 'fall_time' in para_triggers_dict:
-        para.setFallTimeTrigger(para_triggers_dict['fall_time'])
-    if 'altitude' in para_triggers_dict:
-        para.setAltitudeTrigger(para_triggers_dict['altitude'])
+    para.set_triggers(main_para_params['trigger'])
 
     rocket.joinDroguechute(drogue)
     rocket.joinParachute(para)
-    rocket.joinEngine(engine, position=params['CG_prop'])
+    rocket.joinEngine(engine, position=params['rocket']['CG_prop'])
 
     wind = createWind(params['wind_model'], params['wind_parameters'])
     rocket.air = Air(wind)
-    rocket.launcher = Launcher(params['rail_length'], params['azimuth'], params['elev_angle'])
-    rocket.enviroment = Enviroment(params['latitude'], params['longitude'], params['alt_launcher'])
+
+    launcher_params = params['launcher']
+    rocket.launcher = Launcher(launcher_params['rail_length'], launcher_params['azimuth'], launcher_params['elev_angle'])
+    env_params = params['environment']
+    rocket.enviroment = Enviroment(env_params['latitude'], env_params['longitude'], env_params['alt_launcher'])
 
     rocket.setRocketOnLauncher()
 
-    solver = TrajectorySolver(rocket, max_t=params['t_max'])
-    
+    solver = TrajectorySolver(rocket, max_t=params['simulation']['t_max'])
     solution = solver.solve().T
 
     x_sol = solution[:3]

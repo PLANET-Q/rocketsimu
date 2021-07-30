@@ -1,0 +1,7 @@
+numba
+numpy
+numpy-quaternion
+scipy
+pandas
+simplekml
+matplotlib

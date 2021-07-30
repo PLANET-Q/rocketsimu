@@ -27,11 +27,11 @@ class RocketEngine:
 
         if params is not None:
             self.overwrite_parameters(params)
-    
+
     def overwrite_parameters(self, params):
         self.__params.update(params)
         self.__syncParamsWithDict()
-    
+
     def __syncParamsWithDict(self):
         self.__MOI_init = self.__params['MOI_prop']
         self.__mass_init = self.__params['mass_prop']
@@ -56,7 +56,7 @@ class RocketEngine:
         self.thrust_array[self.thrust_array < 0.0] = 0.0
 
         self.max_thrust = np.max(self.thrust_array)
-        
+
         '''
         self.thrust_startup_time = np.min(self.thrust_time_array[self.thrust_array >= self.max_thrust*0.01])
         self.thrust_cutoff_time = np.max(self.thrust_time_array[self.thrust_array >= self.max_thrust*0.01])\
@@ -70,7 +70,7 @@ class RocketEngine:
         self.thrust_time_array, self.thrust_array = trimThrust(self.thrust_array, self.thrust_time_array, threshold_rate=0.01)
         self.thrust_startup_time = self.thrust_time_array[0]
         self.thrust_cutoff_time = self.thrust_time_array[-1]
-        
+
         self.thrust_n_samples = len(self.thrust_array)
 
         self.impulse_array = getImpulseArray(self.thrust_array, self.thrust_dt)
@@ -115,7 +115,7 @@ def trimThrust(thrust_array, time_array, threshold_rate=0.01):
                             time_array,
                             threshold_rate
                         )
-    
+
     mask1 = (time_array >= t_startup)
     mask2 = (time_array <= t_cutoff)
 

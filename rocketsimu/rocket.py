@@ -62,7 +62,7 @@ class Rocket:
     def overwrite_parameters(self, params):
         self.__params.update(params)
         self.__syncParamWithDict()
-    
+
     def getCG(self, t=None):
         if t is None:
             t = self.t
@@ -74,7 +74,7 @@ class Rocket:
         if t is None:
             t = self.t
         return self.mass_dry + self.engine.propMass(t)
-    
+
     def getMOI(self, t=None):
         # 平衡軸の定理を使用したモーメント計算
         # ロール方向のモーメントには影響しないとしている(即ちエンジンに偏心がない)
@@ -86,7 +86,7 @@ class Rocket:
         MOI_body = self.MOI_dry + self.mass_dry*(CG - self.CG_dry)**2 * yz_unit
         MOI_prop = self.engine.propMOI(t) + self.engine.propMass(t)*(CG - self.CG_prop)**2 * yz_unit
         return (MOI_body + MOI_prop)
-    
+
     def isOverApogee(self):
         return self.t_apogee != None
 
@@ -97,7 +97,7 @@ class Rocket:
         self.engine = engine
         self.CG_prop = position
         self.CG_rocket_init = self.getCG(0)
-    
+
     def joinDroguechute(self, droguechute):
         self.droguechute = droguechute
         self.droguechute.joinRocket(self)
@@ -107,28 +107,28 @@ class Rocket:
         self.parachute = parachute
         self.parachute.joinRocket(self)
         pass
-    
+
     def hasParachute(self):
         return self.parachute != None
-    
+
     def isParachuteDeployed(self):
         return self.parachute.isDeploy()
-    
+
     def hasDroguechute(self):
         return self.droguechute != None
-    
+
     def isDroguechuteDeployed(self):
         return self.droguechute.isDeploy()
-    
+
     def getCP(self, mach, alpha):
         return standard_aero_coeff.CP(mach, alpha, self.CP)
-    
+
     def getCl(self, mach, alpha):
         return standard_aero_coeff.Cl(mach, alpha, self.Clalpha)
-    
+
     def getCd(self, mach, alpha):
         return standard_aero_coeff.Cd(mach, alpha, self.Cd0)
-    
+
     def __syncParamWithDict(self):
         self.height = self.__params['height']
 

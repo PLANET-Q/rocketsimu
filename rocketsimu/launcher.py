@@ -13,7 +13,7 @@ class Launcher:
         self.azimuth = azimuth_deg * (np.pi / 180.0)
         self.elevation = elevation_deg * (np.pi / 180.0)
         self.rocket = None
-    
+
     def setRocket(self, rocket:Rocket):
         self.rocket = rocket
         distance_1stlug_off =\
@@ -33,20 +33,20 @@ class Launcher:
         self.rocket.v = np.zeros((3))
         self.rocket.omega = np.zeros((3))
         self.rocket.q = q0
-    
+
     def is1stlugOff(self):
         if self.rocket is None:
             raise AttributeError('Class valiable "rocket" must be assigned.')
-        
+
         if self.rocket.x[2] > self.height_1stlug_off:
             return True
         else:
             return False
-    
+
     def is2ndlugOff(self):
         if self.rocket is None:
             raise AttributeError('Class valiable "rocket" must be assigned.')
-        
+
         if self.rocket.x[2] > self.height_2ndlug_off:
             return True
         else:

@@ -1,4 +1,5 @@
 # -*- coding:utf-8 -*-
+from typing import Dict, Literal
 import numpy as np
 import numpy.linalg as LA
 import quaternion
@@ -23,16 +24,30 @@ class Parachute:
         self.__t_deploy = None
         self.__t_deploy_falling = None
         self.__alt_deploy = None
-    
+
+    def set_triggers(
+            self,
+            triggers_dict:Dict[str, float]
+        ):
+        for type, value in triggers_dict.items():
+            if type == 'flight_time':
+                self.setFlightTimeTrigger(value)
+            elif type == 'fall_time':
+                self.setFallTimeTrigger(value)
+            elif type == 'altitude':
+                self.setAltitudeTrigger(value)
+            else:
+                raise ValueError("`type` must be 'flight_time', 'fall_time' or 'altitude'.")
+
     def setAltitudeTrigger(self, alt):
         self.__alt_deploy = alt
-    
+
     def setFallTimeTrigger(self, t_falling):
         self.__t_deploy_falling = t_falling
-    
+
     def setFlightTimeTrigger(self, t_flight):
         self.__t_deploy = t_flight
-    
+
     def isDeploy(self):
         if self.__t_deploy is not None:
             if self.rocket.t > self.__t_deploy:
@@ -44,23 +59,23 @@ class Parachute:
             if self.rocket.x[2] < self.__alt_deploy:
                 return True
         return False
-    
+
     def joinRocket(self, rocket):
         self.rocket = rocket
-    
+
     def setAir(self, air):
         self.air = air
-    
+
     def DragForce(self, v_air, rho):
         '''
-        Returns parachute drag force.  
+        Returns parachute drag force.
         INPUT
             v_air: air velocity vector in body coord.
             rho: air density
         OUTPUT
             parachute drag force vector in body coord.
         '''
-        
+
         parachute_drag = 0.5 * rho * LA.norm(v_air) * v_air * self.__S * self.__Cd
 
         return parachute_drag

@@ -101,7 +101,7 @@ class TrajectorySolver:
             print('altitude:', x[2], '[m]')
             rocket.t_apogee = t
             self.apogee_flag = True
-        
+
         # 重量・重心・慣性モーメント計算
         mass = rocket.getMass(t)
         CG = rocket.getCG(t)
@@ -122,7 +122,7 @@ class TrajectorySolver:
         else:
             # v_air[0]: 地球から見た機体座標系での機軸方向速度
             alpha = np.arccos(np.abs(v_air[0])/v_air_norm)
-        
+
         # ロール方向の風向
         phi = np.arctan2(-v_air[1], -v_air[2])
         _, _, rho, sound_speed = air.standard_air(x[2])
@@ -148,7 +148,7 @@ class TrajectorySolver:
         l = np.array([rocket.diameter, rocket.height, rocket.height])
         air_moment_damping = 0.25 * rho * v_air_norm * rocket.Cm * (l**2) * rocket_xarea * omega
         air_moment = air_moment_CG + air_moment_damping
-        
+
         # 重力加速度
         g = env.g(x[2])
         #print('F_coriolis', env.Coriolis(v, Tbl))
@@ -156,7 +156,7 @@ class TrajectorySolver:
         if self.state <= 1.1:
             # state <= 1.1: ラグがランチャーに拘束されている時
             # 運動方向は機体x方向(機軸方向)のみ
-            
+
             # 並進力のうち機体座標系で表現されているもの
             # TODO: 振動friction()関数の実装
             thrust_vec = np.array([rocket.engine.thrust(t), 0.0, 0.0])

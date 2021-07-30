@@ -54,6 +54,9 @@ class HybridWind(Wind):
 
 class WindPower(Wind):
     def __init__(self, z0, n, wind_std):
+        '''
+        wind_std: [E2W, N2S, UP]
+        '''
         self.wind_std = np.array(wind_std)
         self.wind_direction = np.arctan2(-wind_std[0], -wind_std[1])
         self.n = n
@@ -62,7 +65,7 @@ class WindPower(Wind):
     def wind(self, h):
         if h < 0.:
             h = 0.
-        
+
         wind_vec = self.wind_std * (h / self.z0)**(1. / self.n)
         return wind_vec
 
@@ -136,7 +139,7 @@ def createWind(wind_model, params_dict):
             w0 = createWind(w0_dict['wind_model'], w0_dict['wind_parameters'])
         else:
             w0 = params_dict['wind0']
-        
+
         if type(params_dict['wind1']) is dict:
             w1_dict = params_dict['wind1']
             w1 = createWind(w1_dict['wind_model'], w1_dict['wind_parameters'])
