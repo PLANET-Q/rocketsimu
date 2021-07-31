@@ -1,38 +1,74 @@
+from typing import Dict, Tuple
 import numpy as np
 import quaternion
 from scipy.integrate import odeint
 from .enviroment import Enviroment
 from .rocket import Rocket
+import json
+
+
+class FlightEvents:
+    def __init__(self) -> None:
+        self._events = {}
+
+    def dict(self)->Dict[str, Dict[str, float]]:
+        return self._events.copy()
+
+    def add_event(self, name:str, t:float, exist_ok:bool=False, **kwargs):
+        event = { 't': t }
+        event.update(kwargs)
+        if exist_ok is False and name in self._events:
+            raise KeyError(f"Event name '{name}' is already exists. To ignore this, argument `exist_ok` should be `True` in `add_event`")
+        self._events[name] = event
+
+    def to_json(self, filename:str):
+        with open(filename, 'w') as f:
+            json.dump(self._events, f, indent=4)
+
+
+class TrajectoryResult:
+    def __init__(
+            self,
+            events:FlightEvents,
+            t: np.ndarray,
+            solution: np.ndarray) -> None:
+        self.events = events
+        self.t = t
+        self.x = solution[:3]
+        self.v = solution[3:6]
+        self.q = solution[6:10]
+        self.w = solution[10:]
+
 
 class TrajectorySolver:
     def __init__(
             self,
-            rocket:Rocket,
             dt=0.05,
             max_t=1000.0):
         self.state = 1
         self.apogee_flag = False
-        self.rocket = rocket
         self.dt = dt
         self.max_t = max_t
         self.t = np.r_[
                         np.arange(0.0,3.,self.dt/10),
                         np.arange(3., self.max_t, self.dt)
                         ]
-    
-    def solve(self):
+
+    def solve(self, rocket:Rocket)->TrajectoryResult:
         u0 = np.r_[
-            self.rocket.x,
-            self.rocket.v,
-            quaternion.as_float_array(self.rocket.q),
-            self.rocket.omega
+            rocket.x,
+            rocket.v,
+            quaternion.as_float_array(rocket.q),
+            rocket.omega
         ]
 
-        self.solution = odeint(self.__f_main, u0, self.t)
-        return self.solution
-    
-    def __f_main(self, u, t):
-        rocket = self.rocket
+        events = FlightEvents()
+        solution = odeint(self.__f_main, u0, self.t, args=(rocket, events))
+        result = TrajectoryResult(events, self.t, solution.T)
+        return result
+
+    def __f_main(self, u, t, rocket:Rocket, events:FlightEvents):
+        # rocket = self.rocket
         env = rocket.enviroment
         air = rocket.air
         launcher = rocket.launcher
@@ -61,18 +97,22 @@ class TrajectorySolver:
         #     note: as_rotation_matrix is for vector rotation
         #         -> for coordinate rotation, input conj(q)
         Tbl = quaternion.as_rotation_matrix(np.conj(q))
+        a=np.array([0,0,0])
 
         if self.state == 1 and launcher.is1stlugOff():
             print('------------------')
             print('1stlug off at t=', t, '[s]')
+            events.add_event('1stlug_off', t, x=x.tolist())
             self.state = 1.1
         elif self.state == 1.1 and launcher.is2ndlugOff():
             print('------------------')
             print('2ndlug off at t=', t, '[s]')
+            events.add_event('2ndlug_off', t, x=x.tolist())
             self.state = 2
         elif self.state <= 2 and t >= rocket.engine.thrust_cutoff_time:
             print('------------------')
             print('MECO at t=', t, '[s]')
+            events.add_event('MECO', t, x=x.tolist())
             if rocket.hasDroguechute():
                 self.state = 3
             else:
@@ -80,14 +120,17 @@ class TrajectorySolver:
         elif self.state == 3 and rocket.isDroguechuteDeployed():
             print('------------------')
             print('drogue chute deployed at t=', t, '[s]')
+            events.add_event('drogue', t, x=x.tolist())
             self.state = 3.5
         elif self.state == 3.5 and rocket.isParachuteDeployed():
             print('------------------')
             print('main parachute deployed at t=', t, '[s]')
+            events.add_event('para', t, x=x.tolist())
             self.state = 4
         elif self.state > 1 and self.state < 5 and x[2] < 0.0 and t > rocket.engine.thrust_startup_time:
             print('------------------')
             print('landing at t=', t, '[s]')
+            events.add_event('landing', t, x=x.tolist(), v=v.tolist())
             self.state = 5
             return u*0
 
@@ -99,6 +142,7 @@ class TrajectorySolver:
             print('------------------')
             print('apogee at t=', t, '[s]')
             print('altitude:', x[2], '[m]')
+            events.add_event('apogee', t, x=x.tolist())
             rocket.t_apogee = t
             self.apogee_flag = True
 
@@ -181,9 +225,14 @@ class TrajectorySolver:
             dv_dt = -np.cross(omega, v) + np.dot(Tbl, g) +\
                 env.Coriolis(v, Tbl) + air_force/mass
         elif self.state == 3.5:
-            # ドローグシュート展開時
-            dv_dt = np.dot(Tbl, g) + env.Coriolis(v, Tbl) +\
-                rocket.droguechute.DragForce(v_air, rho)/mass
+            if rocket.hasDroguechute():
+                # ドローグシュート展開時
+                dv_dt = np.dot(Tbl, g) + env.Coriolis(v, Tbl) +\
+                    rocket.droguechute.DragForce(v_air, rho)/mass
+            else:
+                # 慣性飛行時orランディング
+                dv_dt = -np.cross(omega, v) + np.dot(Tbl, g) +\
+                    env.Coriolis(v, Tbl) + air_force/mass
         elif self.state == 4:
             # メインパラシュート展開時
             dv_dt = np.dot(Tbl, g) + env.Coriolis(v, Tbl) +\
@@ -223,5 +272,5 @@ class TrajectorySolver:
         # END IF
 
         du_dt = np.r_[dx_dt, dv_dt, dq_dt, domega_dt]
-        
+
         return du_dt

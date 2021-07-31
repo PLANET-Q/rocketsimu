@@ -20,7 +20,7 @@ __date__ = '8 Apl 2019'
 シミュレーションインターフェース関数をまとめたスクリプト
 '''
 
-def simulate(parameters_filename):
+def simulate(parameters_filename:str):
     '''
     INPUT
         parameters_filename: ロケットのパラメータが格納されているJSONファイル名
@@ -34,7 +34,7 @@ def simulate(parameters_filename):
     '''
 
     with open(parameters_filename, 'r') as f:
-        param_ext = os.path.splitext(parameters_filename)
+        param_ext = os.path.splitext(parameters_filename)[1]
         if param_ext == '.json':
             params = json.load(f)
         elif param_ext == '.yml' or param_ext == '.yaml':
@@ -45,18 +45,18 @@ def simulate(parameters_filename):
     engine.loadThrust(params['engine']['thrust_curve_csv'], params['engine']['thrust_dt'])
 
     parachute_params = params['parachutes']
-    if 'drogue' in parachute_params:
+    if 'drogue' in parachute_params and parachute_params['drogue']['enable'] == True:
         drogue_params = parachute_params['drogue']
         drogue = Parachute(drogue_params['Cd'], drogue_params['S'])
         # set trigger of the droguechute's deployment
         drogue.set_triggers(drogue_params['trigger'])
+        rocket.joinDroguechute(drogue)
 
     main_para_params = parachute_params['para']
     para = Parachute(main_para_params['Cd'], main_para_params['S'])
     # set trigger of the parachute's deployment
     para.set_triggers(main_para_params['trigger'])
 
-    rocket.joinDroguechute(drogue)
     rocket.joinParachute(para)
     rocket.joinEngine(engine, position=params['rocket']['CG_prop'])
 
@@ -70,12 +70,6 @@ def simulate(parameters_filename):
 
     rocket.setRocketOnLauncher()
 
-    solver = TrajectorySolver(rocket, max_t=params['simulation']['t_max'])
-    solution = solver.solve().T
-
-    x_sol = solution[:3]
-    v_sol = solution[3:6]
-    q_sol = solution[6:10]
-    omega_sol = solution[10:]
-
-    return solver.t, x_sol, v_sol, q_sol, omega_sol
+    solver = TrajectorySolver(max_t=params['simulation']['t_max'])
+    result = solver.solve(rocket)
+    return result
