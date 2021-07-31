@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 import json
 import os
+from typing import Optional
 import yaml
 from .enviroment import Enviroment
 from .launcher import Launcher
@@ -20,7 +21,10 @@ __date__ = '8 Apl 2019'
 シミュレーションインターフェース関数をまとめたスクリプト
 '''
 
-def simulate(parameters_filename:str):
+def simulate(
+        parameters_filename:str,
+        thrust_curve_filename:Optional[str]=None
+    ):
     '''
     INPUT
         parameters_filename: ロケットのパラメータが格納されているJSONファイル名
@@ -41,8 +45,16 @@ def simulate(parameters_filename:str):
             params = yaml.load(f)
 
     rocket = Rocket(params['rocket'])
-    engine = RocketEngine(params['engine'])
-    engine.loadThrust(params['engine']['thrust_curve_csv'], params['engine']['thrust_dt'])
+
+    engine_params = params['engine']
+    engine = RocketEngine(engine_params)
+    if thrust_curve_filename is None:
+        thrust_curve_filename = engine_params['thrust_curve_csv']
+    if 'cutoff_freq' in engine_params:
+        cutoff_freq = engine_params['cutoff_freq']
+    else:
+        cutoff_freq = 10
+    engine.loadThrust(thrust_curve_filename, engine_params['thrust_dt'], cutoff_freq)
 
     parachute_params = params['parachutes']
     if 'drogue' in parachute_params and parachute_params['drogue']['enable'] == True:

@@ -11,10 +11,10 @@ class Air:
         self.wind = wind
         self.T0 = T0
         self.p0 = p0
-    
+
     def standard_air(self, h):
         '''
-        returns air property given an altitude  
+        returns air property given an altitude
         INPUT: h = altitude [m]
         '''
 
@@ -158,7 +158,7 @@ class _StandardAeroCoeff:
             data = np.loadtxt(Cd0_path, delimiter=',', comments='$')
         except FileNotFoundError:
             raise FileNotFoundError('Cd0 file ' + Cd0_path + 'was not found')
-        
+
         self.Cd0_vs_Mach = interp1d(data[:, 0], data[:, 1], kind='linear')
         self.Cd0_scale_basevalue = self.Cd0_vs_Mach(0.0)
 
@@ -167,22 +167,22 @@ class _StandardAeroCoeff:
             data = np.loadtxt(Clalpha_path, delimiter=',', comments='$')
         except FileNotFoundError:
             raise FileNotFoundError('Clalpha file ' + Clalpha_path + 'was not found')
-        
+
         self.Clalpha_vs_Mach = interp1d(data[:, 0], data[:, 1], kind='linear')
         self.Clalpha_scale_basevalue = self.Clalpha_vs_Mach(0.0)
 
     def CP(self, mach, AoA, scale=1.0):
         return float(self.CP_vs_MachAlpha(mach, AoA)) * (scale/self.CP_scale_basevalue)
-    
+
     def Clalpha(self, mach, scale=1.0):
         return self.Clalpha_vs_Mach(mach) * (scale/self.Clalpha_scale_basevalue)
-    
+
     def Cd0(self, mach, scale=1.0):
         return self.Cd0_vs_Mach(mach) * (scale/self.Cd0_scale_basevalue)
-    
+
     def Cl(self, mach, AoA, Clalpha_scale=1.0):
         Clalpha = self.Clalpha(mach, Clalpha_scale)
-        
+
         '''
         self.f_cl_alpha(Mach) = slope near AOA=0
         shape will be lile sin(2*alpha), which means Cl=0 at 90deg

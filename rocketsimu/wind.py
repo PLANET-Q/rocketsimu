@@ -4,7 +4,7 @@ import scipy.interpolate as interpolate
 class Wind:
     def __call__(self, h):
         return self.wind(h)
-    
+
     def wind(self, h):
         return 0
 
@@ -31,9 +31,9 @@ class HybridWind(Wind):
             pass
         else:
             raise ValueError('Invalid hybrid type "'+kind+'" was indicated.')
-        
+
         self.kind = kind
-    
+
     def __w(self, h):
         w0 = self.weight0
         w1 = self.weight1
@@ -89,7 +89,7 @@ class WindForecast(Wind):
 
 def createWind(wind_model, params_dict):
     '''
-    create instance of Wind class.  
+    create instance of Wind class.
     INPUT
         wind_model: name of wind model.
             `constant`, `power` or `forecast` is currently available(v0.1.0).
