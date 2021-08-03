@@ -42,7 +42,7 @@ class Enviroment:
 
         # 射点静止座標系における自転角速度ベクトル
         # 地球回転座標系での自転角速度を射点静止座標系に変換して求めている
-        self.omega_earth_local = np.dot(LA.inv(self.Tel), np.array([0., 0., self.omega_earth]))
+        self.omega_earth_local = np.dot(self.Tel.T, np.array([0., 0., self.omega_earth]))
 
     def g(self, h):
         # TODO: 重力を高度hの関数にする。
@@ -57,5 +57,5 @@ class Enviroment:
         # =======================================
 
         # Coriolis  force in body coord. note that self.omega_earth, omega of earth-spin, is given in local coord.
-        Fcor = -2.0*mass*np.cross(np.dot(Tbl, self.omega_earth_local), v_body)
+        Fcor = 2.0*mass*np.cross(np.dot(Tbl, self.omega_earth_local), v_body)
         return Fcor
