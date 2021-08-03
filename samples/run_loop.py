@@ -12,17 +12,23 @@ import quaternion
 from lib import kmlplot
 from lib.numpy2json import NumpyEncoder
 
-def run_simu(params, idx, foldername='tmp'):
-    
+def run_simu(params:dict, idx, foldername='tmp'):
     print(f'[PID:{os.getpid()}] Start')
 
     # シミュレーション
-    t, x, v, q, omega, log = simu.simulate(params, cons_out=False)
+    result = simu.simulate(params)
+    log = result.events.events()
 
     print(f'[PID:{os.getpid()}] landing XYZ:', log['landing']['x'])
     log.update({'loop_id': idx})
     with open(os.path.join(foldername, str(idx)+'.json'), 'w') as f:
         json.dump(log, f, indent=2, cls=NumpyEncoder)
+
+    t = result.t
+    x = result.x
+    v = result.v_body
+    q = result.q
+    omega = result.w
 
     # 結果を弾道履歴表(csv), パラメータ(json), 特異点ログ(json)に分けてファイル出力
     # q_float = quaternion.as_float_array(q)
@@ -67,11 +73,11 @@ if __name__ == '__main__':
     if not os.path.exists(args.out):
         print('output directory:', args.out, 'was not found -> creating..')
         os.makedirs(args.out)
-    
+
     # 出力フォルダにパラメータを保存
     with open(os.path.join(args.out, 'param_origin.json'), 'w') as f:
         json.dump(params, f, indent=2)
-    
+
     # プロセス数
     if args.process:
         n_process = int(args.process)
@@ -90,7 +96,8 @@ if __name__ == '__main__':
         for azimuth in azimuth_array:
             wind_std = [-speed * np.sin(azimuth), -speed * np.cos(azimuth), 0]
             params['wind_parameters']['wind_std'] = wind_std
-            p = multiprocessing.Process(target=run_simu, args=(params, idx, args.out))
+            output_name = f'{speed:.2f}_{np.rad2deg(azimuth):.2f}'
+            p = multiprocessing.Process(target=run_simu, args=(params, output_name, args.out))
             proc.append(p)
             p.start()
             idx += 1
@@ -117,17 +124,16 @@ if __name__ == '__main__':
     proc = []
 
     if args.kml:
-        
         # 伊豆レギュレーション情報読み出し
-        with open('location_parameters/izu.json') as f:
+        with open('location_parameters/noshiro.json') as f:
             regulations = json.load(f)
-        
         idx=0
         scatter = np.zeros((len(speed_array), len(azimuth_array)+1, 2))
         for r, speed in enumerate(speed_array):
             for theta, azimuth in enumerate(azimuth_array):
                 wind_std = [-speed * np.sin(azimuth), -speed * np.cos(azimuth), 0]
-                with open(os.path.join(args.out, str(idx)+'.json')) as f:
+                output_name = f'{speed:.2f}_{np.rad2deg(azimuth):.2f}'
+                with open(os.path.join(args.out, f'{output_name}.json')) as f:
                     data = json.load(f)
                 scatter[r, theta] = np.array(data['landing']['x'])[:2]
                 idx += 1

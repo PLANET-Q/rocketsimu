@@ -138,7 +138,7 @@ def setKmlByJson(json_filename, kml=None, export_file=''):
 
     setKmlByDicts(dict_list, kml)
 
-    if export_file is not '':
+    if export_file != '':
         kml.save(export_file)
 
     return kml

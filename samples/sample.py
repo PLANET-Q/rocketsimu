@@ -55,19 +55,21 @@ def main(
 
     if plot_tajectory:
         t_MECO = events_dict['MECO']['t']
-        t_para = events_dict['para']['t']
+        # t_para = events_dict['para']['t']
         x_powered = x[:, t<t_MECO]
         # mask = t>=t_MECO and t<t_para
-        t_coast = t[t>=t_MECO]
-        x_coast = x[:, t>=t_MECO][:, t_coast<t_para]
-        x_para = x[:, t>=t_para]
+        # t_coast = t[t>=t_MECO]
+        x_coast = x[:, t>=t_MECO]#[:, t_coast<t_para]
+        # x_para = x[:, t>=t_para]
 
         fig = plt.figure(0)
         ax = fig.add_subplot(111, projection='3d')
         ax.plot(x_powered[0], x_powered[1], x_powered[2], label='powered', color='red')
         ax.plot(x_coast[0], x_coast[1], x_coast[2], label='coast', color='green')
-        ax.plot(x_para[0], x_para[1], x_para[2], label='para', color='blue')
+        # ax.plot(x_para[0], x_para[1], x_para[2], label='para', color='blue')
         ax.legend()
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
         ax.set_title('Trajectory')
         plt.show()
 
