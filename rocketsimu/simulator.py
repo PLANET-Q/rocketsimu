@@ -20,7 +20,6 @@ __date__ = '8 Apl 2019'
 '''
 シミュレーションインターフェース関数をまとめたスクリプト
 '''
-
 def simulate(
         parameters_filename:str,
         thrust_curve_filename:Optional[str]=None
@@ -37,6 +36,7 @@ def simulate(
         omega: 各時刻における機体座標系各軸周りの各速度ベクトル
     '''
 
+    parameters_dirname = os.path.dirname(os.path.abspath(parameters_filename))
     with open(parameters_filename, 'r') as f:
         param_ext = os.path.splitext(parameters_filename)[1]
         if param_ext == '.json':
@@ -49,7 +49,7 @@ def simulate(
     engine_params = params['engine']
     engine = RocketEngine(engine_params)
     if thrust_curve_filename is None:
-        thrust_curve_filename = engine_params['thrust_curve_csv']
+        thrust_curve_filename = os.path.join(parameters_dirname, engine_params['thrust_curve_csv'])
     if 'cutoff_freq' in engine_params:
         cutoff_freq = engine_params['cutoff_freq']
     else:
@@ -84,4 +84,5 @@ def simulate(
 
     solver = TrajectorySolver(max_t=params['simulation']['t_max'])
     result = solver.solve(rocket)
+
     return result

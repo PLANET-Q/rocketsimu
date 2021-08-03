@@ -130,8 +130,13 @@ def main(
         csv_params = load_csv_params(input_path)
         json_params = format_csv_to_json(csv_params)
         with open(output_path, 'w') as f:
-            # json.dump(json_params, f, indent=4)
-            yaml.dump(json_params, f, indent=4)
+            out_ext = os.path.splitext(output_path)[1]
+            if out_ext == '.json':
+                json.dump(json_params, f, indent=4)
+            elif out_ext == '.yaml' or out_ext == '.yml':
+                yaml.dump(json_params, f, indent=4)
+            else:
+                raise ValueError('output file type must be `.json`, `.yaml` or `.yml`')
     elif input_ext == '.json':
         pass
     elif input_ext == '.yaml' or input_ext == '.yml':
