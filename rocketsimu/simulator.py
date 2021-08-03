@@ -1,7 +1,8 @@
 # -*- coding:utf-8 -*-
 import json
 import os
-from typing import Optional
+from typing import Mapping, Optional, Union
+from numpy.lib.arraysetops import isin
 import yaml
 from .enviroment import Enviroment
 from .launcher import Launcher
@@ -21,7 +22,7 @@ __date__ = '8 Apl 2019'
 シミュレーションインターフェース関数をまとめたスクリプト
 '''
 def simulate(
-        parameters_filename:str,
+        parameters:Union[str, Mapping],
         thrust_curve_filename:Optional[str]=None
     ):
     '''
@@ -36,13 +37,18 @@ def simulate(
         omega: 各時刻における機体座標系各軸周りの各速度ベクトル
     '''
 
-    parameters_dirname = os.path.dirname(os.path.abspath(parameters_filename))
-    with open(parameters_filename, 'r') as f:
-        param_ext = os.path.splitext(parameters_filename)[1]
-        if param_ext == '.json':
-            params = json.load(f)
-        elif param_ext == '.yml' or param_ext == '.yaml':
-            params = yaml.load(f)
+    if isinstance(parameters, str):
+        parameters_filename = parameters
+        parameters_dirname = os.path.dirname(os.path.abspath(parameters_filename))
+        with open(parameters_filename, 'r') as f:
+            param_ext = os.path.splitext(parameters_filename)[1]
+            if param_ext == '.json':
+                params = json.load(f)
+            elif param_ext == '.yml' or param_ext == '.yaml':
+                params = yaml.load(f)
+    else:
+        parameters_dirname = './'
+        params = parameters
 
     rocket = Rocket(params['rocket'])
 
@@ -57,19 +63,24 @@ def simulate(
     engine.loadThrust(thrust_curve_filename, engine_params['thrust_dt'], cutoff_freq)
 
     parachute_params = params['parachutes']
-    if 'drogue' in parachute_params and parachute_params['drogue']['enable'] == True:
+    if 'drogue' in parachute_params and parachute_params['drogue'].get('enable', True) == True:
         drogue_params = parachute_params['drogue']
         drogue = Parachute(drogue_params['Cd'], drogue_params['S'])
         # set trigger of the droguechute's deployment
         drogue.set_triggers(drogue_params['trigger'])
         rocket.joinDroguechute(drogue)
+    else:
+        print('> no drogue chute')
 
-    main_para_params = parachute_params['para']
-    para = Parachute(main_para_params['Cd'], main_para_params['S'])
-    # set trigger of the parachute's deployment
-    para.set_triggers(main_para_params['trigger'])
+    if 'para' in parachute_params and parachute_params['para'].get('enable', True) == True:
+        main_para_params = parachute_params['para']
+        para = Parachute(main_para_params['Cd'], main_para_params['S'])
+        # set trigger of the parachute's deployment
+        para.set_triggers(main_para_params['trigger'])
+        rocket.joinParachute(para)
+    else:
+        print('> no main para chute')
 
-    rocket.joinParachute(para)
     rocket.joinEngine(engine, position=params['rocket']['CG_prop'])
 
     wind = createWind(params['wind_model'], params['wind_parameters'])

@@ -108,19 +108,18 @@ class TrajectorySolver:
             print('MECO at t=', t, '[s]')
             events.add_event('MECO', t, x=x.tolist())
             self.state = SolverState.COASTING
-        elif self.state == SolverState.COASTING:
-            if rocket.hasDroguechute():
-                if rocket.isDroguechuteDeployed():
-                    print('------------------')
-                    print('drogue chute deployed at t=', t, '[s]')
-                    events.add_event('drogue', t, x=x.tolist(), v_air=v_air_norm)
-                    self.state = SolverState.DROGUE_DEPLOYED
-            else:
-                if rocket.hasParachute() and rocket.isParachuteDeployed():
-                    print('------------------')
-                    print('main parachute deployed at t=', t, '[s]')
-                    events.add_event('para', t, x=x.tolist(), v_air=v_air_norm)
-                    self.state = SolverState.PARACHUTE_DEPLOYED
+        elif self.state == SolverState.COASTING and rocket.hasDroguechute():
+            if rocket.isDroguechuteDeployed():
+                print('------------------')
+                print('drogue chute deployed at t=', t, '[s]')
+                events.add_event('drogue', t, x=x.tolist(), v_air=v_air_norm)
+                self.state = SolverState.DROGUE_DEPLOYED
+        elif self.state == SolverState.COASTING and not rocket.hasDroguechute() and rocket.hasParachute():
+            if rocket.isParachuteDeployed():
+                print('------------------')
+                print('main parachute deployed at t=', t, '[s]')
+                events.add_event('para', t, x=x.tolist(), v_air=v_air_norm)
+                self.state = SolverState.PARACHUTE_DEPLOYED
         elif self.state == SolverState.DROGUE_DEPLOYED and rocket.hasParachute() and rocket.isParachuteDeployed():
             print('------------------')
             print('main parachute deployed at t=', t, '[s]')
