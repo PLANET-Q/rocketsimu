@@ -1,44 +1,8 @@
-from typing import Dict, Tuple
 import numpy as np
 import quaternion
 from scipy.integrate import odeint
-from .enviroment import Enviroment
 from .rocket import Rocket
-import json
-
-
-class FlightEvents:
-    def __init__(self) -> None:
-        self._events = {}
-
-    def dict(self)->Dict[str, Dict[str, float]]:
-        return self._events.copy()
-
-    def add_event(self, name:str, t:float, exist_ok:bool=False, **kwargs):
-        event = { 't': t }
-        event.update(kwargs)
-        if exist_ok is False and name in self._events:
-            raise KeyError(f"Event name '{name}' is already exists. To ignore this, argument `exist_ok` should be `True` in `add_event`")
-        self._events[name] = event
-
-    def to_json(self, filename:str):
-        with open(filename, 'w') as f:
-            json.dump(self._events, f, indent=4)
-
-
-class TrajectoryResult:
-    def __init__(
-            self,
-            events:FlightEvents,
-            t: np.ndarray,
-            solution: np.ndarray) -> None:
-        self.events = events
-        self.t = t
-        self.x = solution[:3]
-        self.v = solution[3:6]
-        self.q = solution[6:10]
-        self.w = solution[10:]
-
+from .result import TrajectoryResult, FlightEvents
 
 class TrajectorySolver:
     def __init__(
@@ -64,7 +28,7 @@ class TrajectorySolver:
 
         events = FlightEvents()
         solution = odeint(self.__f_main, u0, self.t, args=(rocket, events))
-        result = TrajectoryResult(events, self.t, solution.T)
+        result = TrajectoryResult(events, self.t, solution.T, rocket.air)
         return result
 
     def __f_main(self, u, t, rocket:Rocket, events:FlightEvents):
@@ -97,17 +61,33 @@ class TrajectorySolver:
         #     note: as_rotation_matrix is for vector rotation
         #         -> for coordinate rotation, input conj(q)
         Tbl = quaternion.as_rotation_matrix(np.conj(q))
-        a=np.array([0,0,0])
+
+        # v_air: 機体座標系での相対風ベクトル
+        v_air = -v + np.dot(Tbl, air.wind(x[2]))
+        v_air_norm = np.linalg.norm(v_air)
+        if v_air_norm == 0:
+            alpha = 0.
+        else:
+            # v_air[0]: 地球から見た機体座標系での機軸方向速度
+            alpha = np.arccos(np.abs(v_air[0])/v_air_norm)
 
         if self.state == 1 and launcher.is1stlugOff():
             print('------------------')
             print('1stlug off at t=', t, '[s]')
-            events.add_event('1stlug_off', t, x=x.tolist())
+            events.add_event(
+                '1stlug_off',
+                t, x=x.tolist(),
+                v=np.linalg.norm(v),
+                v_air=v_air_norm)
             self.state = 1.1
         elif self.state == 1.1 and launcher.is2ndlugOff():
             print('------------------')
-            print('2ndlug off at t=', t, '[s]')
-            events.add_event('2ndlug_off', t, x=x.tolist())
+            print('last lug off at t=', t, '[s]')
+            events.add_event(
+                '2ndlug_off',
+                t, x=x.tolist(),
+                v=np.linalg.norm(v),
+                v_air=v_air_norm)
             self.state = 2
         elif self.state <= 2 and t >= rocket.engine.thrust_cutoff_time:
             print('------------------')
@@ -120,17 +100,17 @@ class TrajectorySolver:
         elif self.state == 3 and rocket.isDroguechuteDeployed():
             print('------------------')
             print('drogue chute deployed at t=', t, '[s]')
-            events.add_event('drogue', t, x=x.tolist())
+            events.add_event('drogue', t, x=x.tolist(), v_air=v_air_norm)
             self.state = 3.5
         elif self.state == 3.5 and rocket.isParachuteDeployed():
             print('------------------')
             print('main parachute deployed at t=', t, '[s]')
-            events.add_event('para', t, x=x.tolist())
+            events.add_event('para', t, x=x.tolist(), v_air=v_air_norm)
             self.state = 4
         elif self.state > 1 and self.state < 5 and x[2] < 0.0 and t > rocket.engine.thrust_startup_time:
             print('------------------')
             print('landing at t=', t, '[s]')
-            events.add_event('landing', t, x=x.tolist(), v=v.tolist())
+            events.add_event('landing', t, x=x.tolist(), v=np.linalg.norm(v))
             self.state = 5
             return u*0
 
@@ -154,27 +134,15 @@ class TrajectorySolver:
         # 慣性モーメントの微分
         # 現在は次の推力サンプル点でのモーメントとの平均変化率で近似している
         # (モーメントの変化は推力サンプル間隔)
-        dt = 1.0e-3
+        dt = 0.0001#rocket.engine.thrust_dt
         MOI_next = rocket.getMOI(t + dt)
         dMOI_dt = (MOI_next - MOI)/dt
-
-        # v_air: 機体座標系での相対風ベクトル
-        v_air = -v + np.dot(Tbl, air.wind(x[2]))
-        v_air_norm = np.linalg.norm(v_air)
-        if v_air_norm == 0:
-            alpha = 0.
-        else:
-            # v_air[0]: 地球から見た機体座標系での機軸方向速度
-            alpha = np.arccos(np.abs(v_air[0])/v_air_norm)
 
         # ロール方向の風向
         phi = np.arctan2(-v_air[1], -v_air[2])
         _, _, rho, sound_speed = air.standard_air(x[2])
         mach = v_air_norm / sound_speed
 
-        #Cd = air.getCd(mach, alpha)
-        #Cl = air.getCl(mach, alpha)
-        #CP = air.getCP(mach, alpha)
         Cd = rocket.getCd(mach, alpha)
         Cl = rocket.getCl(mach, alpha)
         CP = rocket.getCP(mach, alpha)
@@ -187,7 +155,8 @@ class TrajectorySolver:
                     (Cl*cosa + Cd*sina)*np.cos(phi)]
                     )
         rocket_xarea = (rocket.diameter/2)**2 * np.pi
-        air_force = 0.5 * rho * v_air_norm**2. * rocket_xarea * (-1 * air_coeff)
+        moving_pressure_q = 0.5 * rho * v_air_norm**2
+        air_force = moving_pressure_q * rocket_xarea * (-1 * air_coeff)
         air_moment_CG = np.cross(np.array([CG - CP, 0.0, 0.0]), air_force)
         l = np.array([rocket.diameter, rocket.height, rocket.height])
         air_moment_damping = 0.25 * rho * v_air_norm * rocket.Cm * (l**2) * rocket_xarea * omega
@@ -260,7 +229,7 @@ class TrajectorySolver:
                 # aerodynamic moment correction: move center of rotation from CG > 2nd lug (currently ignore damping correction)
                 air_moment_2ndlug = air_moment + np.cross(lug2CG, air_force)
                 # gravitaional moment around CG
-                grav_body = mass * np.dot(Tbl, env.g(x[2]))  # gravity in body coord.
+                grav_body = mass * np.dot(Tbl, g)  # gravity in body coord.
                 grav_moment_2ndlug = np.cross(lug2CG, grav_body)
                 # overwrite air_moment
                 air_moment = air_moment_2ndlug + grav_moment_2ndlug

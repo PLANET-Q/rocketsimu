@@ -67,8 +67,9 @@ class Rocket:
         if t is None:
             t = self.t
         moment_dry = self.CG_dry * self.mass_dry
-        moment_prop = self.CG_prop * self.engine.propMass(t)
-        return float((moment_dry + moment_prop)/(self.mass_dry + self.engine.propMass(t)))
+        m_prop = self.engine.propMass(t)
+        moment_prop = self.CG_prop * m_prop
+        return float((moment_dry + moment_prop)/(self.mass_dry + m_prop))
 
     def getMass(self, t=None):
         if t is None:
