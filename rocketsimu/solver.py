@@ -8,11 +8,14 @@ class TrajectorySolver:
     def __init__(
             self,
             dt=0.05,
-            max_t=1000.0):
+            max_t=1000.0,
+            cons_out=True):
         self.state = 1
         self.apogee_flag = False
         self.dt = dt
         self.max_t = max_t
+        self.cons = cons_out
+        self.solver_log = {}
         self.t = np.r_[
                         np.arange(0.0,3.,self.dt/10),
                         np.arange(3., self.max_t, self.dt)
@@ -94,7 +97,14 @@ class TrajectorySolver:
             print('MECO at t=', t, '[s]')
             events.add_event('MECO', t, x=x.tolist())
             if rocket.hasDroguechute():
-                self.state = 3
+                if rocket.isDroguechuteDeployed():
+                    if self.cons:
+                        print('------------------')
+                        print('drogue chute deployed at t=', t, '[s]')
+                        print('altitude:', x[2], '[m]')
+
+                    self.add_solver_log('drogue', t=t, x=x, v=v, q=q, omega=omega)
+                    self.state = 3.5 # ドローグ展開
             else:
                 self.state = 3.5
         elif self.state == 3 and rocket.isDroguechuteDeployed():
@@ -124,6 +134,8 @@ class TrajectorySolver:
             print('altitude:', x[2], '[m]')
             events.add_event('apogee', t, x=x.tolist())
             rocket.t_apogee = t
+
+            self.add_solver_log('apogee', t=t, x=x, v=v, q=q, omega=omega)
             self.apogee_flag = True
 
         # 重量・重心・慣性モーメント計算
