@@ -1,6 +1,5 @@
+from rocketsimu.judge_inside import InsideAreaJudgement
 import rocketsimu.simulator as simu
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import argparse
 import multiprocessing
 import os
@@ -123,25 +122,37 @@ if __name__ == '__main__':
         p.join()
     proc = []
 
-    if args.kml:
-        # 伊豆レギュレーション情報読み出し
-        with open('location_parameters/noshiro.json') as f:
-            regulations = json.load(f)
-        idx=0
-        scatter = np.zeros((len(speed_array), len(azimuth_array)+1, 2))
-        for r, speed in enumerate(speed_array):
-            for theta, azimuth in enumerate(azimuth_array):
-                wind_std = [-speed * np.sin(azimuth), -speed * np.cos(azimuth), 0]
-                output_name = f'{speed:.2f}_{np.rad2deg(azimuth):.2f}'
-                with open(os.path.join(args.out, f'{output_name}.json')) as f:
-                    data = json.load(f)
-                scatter[r, theta] = np.array(data['landing']['x'])[:2]
-                idx += 1
-            scatter[r, -1] = scatter[r, 0] # 楕円の始端と終端を結ぶ
+    # レギュレーション情報読み出し
+    with open('location_parameters/noshiro.json') as f:
+        regulations = json.load(f)
+    idx=0
+    scatter = np.zeros((len(speed_array), len(azimuth_array)+1, 2))
+    judge = InsideAreaJudgement(regulations)
+    # judge_results = np.zeros((len(speed_array), len(azimuth_array)), dtype=bool)
+    judge_results = {}
+    for r, speed in enumerate(speed_array):
+        speed_str = str(speed)
+        judge_results[speed_str] = {}
+        for theta, azimuth in enumerate(azimuth_array):
+            azimuth_deg = np.rad2deg(azimuth)
+            output_name = f'{speed:.2f}_{azimuth_deg:.2f}'
+            with open(os.path.join(args.out, f'{output_name}.json')) as f:
+                data = json.load(f)
+            scatter[r, theta] = np.array(data['landing']['x'])[:2]
 
-        print('scatter:', scatter)
+            azimuth_str = f'{azimuth_deg:.1f}'
+            coord = data['landing']['coord']
+            judge_results[speed_str][azimuth_str] = judge(coord[0], coord[1])
+            idx += 1
+        scatter[r, -1] = scatter[r, 0] # 楕円の始端と終端を結ぶ
+    print(judge_results)
+    judge_result_df = pd.DataFrame.from_dict(judge_results)
+    print(judge_result_df)
+
+    if args.kml:
+        # print('scatter:', scatter)
         for item in regulations:
             if item['name'] == 'rail':
                 latlon = item['center']
-        print('lat lon:', latlon)
+        # print('lat lon:', latlon)
         kmlplot.output_kml(scatter, latlon, speed_array, regulations, os.path.join(args.out, args.kml))

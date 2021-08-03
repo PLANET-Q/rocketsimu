@@ -42,7 +42,7 @@ class TrajectorySolver:
 
         events = FlightEvents()
         solution = odeint(self.__f_main, u0, self.t, args=(rocket, events))
-        result = TrajectoryResult(events, self.t, solution.T, rocket.air)
+        result = TrajectoryResult(events, self.t, solution.T, rocket)
         return result
 
     def __f_main(self, u, t, rocket:Rocket, events:FlightEvents):
@@ -67,6 +67,8 @@ class TrajectorySolver:
         rocket.v = v
         rocket.q = q
         rocket.omega = omega
+
+        latlon = env.xy2latlon(x[:2])
 
         # ----------------------------
         #    Direction Cosine Matrix for input q
@@ -127,8 +129,8 @@ class TrajectorySolver:
             self.state = SolverState.PARACHUTE_DEPLOYED
         elif self.state > SolverState.ON_RAIL and self.state < SolverState.LANDING and x[2] < 0.0 and t > rocket.engine.thrust_startup_time:
             print('------------------')
-            print('landing at t=', t, '[s]')
-            events.add_event('landing', t, x=x.tolist(), v=np.linalg.norm(v))
+            print(f'landing at t={t}[s] coord={latlon}')
+            events.add_event('landing', t, x=x.tolist(), coord=latlon.tolist(), v=np.linalg.norm(v))
             self.state = SolverState.LANDING
             return u*0
 

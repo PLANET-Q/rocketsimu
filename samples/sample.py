@@ -1,7 +1,9 @@
 # %%]
+import json
 from typing import Optional
 import numpy as np
 import rocketsimu.simulator as simu
+from rocketsimu.judge_inside import InsideAreaJudgement
 import matplotlib.pyplot as plt
 import pandas as pd
 import argparse
@@ -48,6 +50,13 @@ def main(
         print(f' {name}:')
         for key, value in record.items():
             print(f'    {key}={value}')
+
+    with open('location_parameters/noshiro.json') as f:
+        restrict_areas = json.load(f)
+    judge = InsideAreaJudgement(restrict_areas)
+    landing_lonlat = events_dict['landing']['coord']
+    judge_result = judge(landing_lonlat[0], landing_lonlat[1])
+    print(landing_lonlat, judge_result)
 
     # print(result.events.events())
     record_df = pd.DataFrame.from_dict(trajec_record)

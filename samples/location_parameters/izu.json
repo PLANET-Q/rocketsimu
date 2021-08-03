@@ -3,23 +3,27 @@
     "name":"rail",
     "type":"circle",
     "center":[34.735972, 139.420944],
-    "radius":50.0
+    "radius":50.0,
+    "mode": "outside"
   },
   {
     "name":"switch",
     "type":"circle",
     "center":[34.735390, 139.421377],
-    "radius":50.0
+    "radius":50.0,
+    "mode": "outside"
   },
   {
     "name":"tent",
     "type":"circle",
     "center":[34.731230, 139.423150],
-    "radius":50.0
+    "radius":50.0,
+    "mode": "outside"
   },
   {
     "name":"range",
     "type":"polygon",
+    "mode": "inside",
     "points":[
       [34.735715,	139.420922],
       [34.731750,	139.421719],

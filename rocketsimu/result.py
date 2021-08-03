@@ -1,3 +1,4 @@
+from rocketsimu.rocket import Rocket
 from typing import Dict, Tuple
 from matplotlib.pyplot import axis
 import numpy as np
@@ -77,8 +78,9 @@ class TrajectoryResult:
             events:FlightEvents,
             t: np.ndarray,
             solution: np.ndarray,
-            air: Air) -> None:
+            rocket: Rocket) -> None:
         self.events = events
+        self.rocket = rocket
         self.t = t
         self.x = solution[:3]
         self.v_body = solution[3:6]
@@ -86,8 +88,11 @@ class TrajectoryResult:
         self.w = solution[10:]
 
         # t_alt, max_alt = np.max(self.x[2])
+        air = rocket.air
+        env = rocket.enviroment
         self.mach, self.dynamic_pressure, self.v_air_body, self.wind_local =\
             analyze_trajectory(self.q.T, self.x.T, self.v_body.T, air)
+        self.x_latlon = env.xy2latlon(self.x[:2].T)
 
         t_max_mach, max_mach = get_max_t_values(t, self.mach)
         t_max_Q, max_Q = get_max_t_values(t, self.dynamic_pressure)
