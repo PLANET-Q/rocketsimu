@@ -4,18 +4,27 @@ from scipy.integrate import odeint
 from .rocket import Rocket
 from .result import TrajectoryResult, FlightEvents
 
+
+class SolverState:
+    ON_RAIL=1.0
+    FIRST_LUG_OFF=1.1
+    POWERED=2.0
+    COASTING=3.0
+    DROGUE_DEPLOYED=3.5
+    PARACHUTE_DEPLOYED=4.0
+    LANDING=5.0
+
+
 class TrajectorySolver:
+
     def __init__(
             self,
             dt=0.05,
-            max_t=1000.0,
-            cons_out=True):
-        self.state = 1
+            max_t=1000.0):
+        self.state = SolverState.ON_RAIL
         self.apogee_flag = False
         self.dt = dt
         self.max_t = max_t
-        self.cons = cons_out
-        self.solver_log = {}
         self.t = np.r_[
                         np.arange(0.0,3.,self.dt/10),
                         np.arange(3., self.max_t, self.dt)
@@ -28,6 +37,8 @@ class TrajectorySolver:
             quaternion.as_float_array(rocket.q),
             rocket.omega
         ]
+        self.state = SolverState.ON_RAIL
+        self.apogee_flag = False
 
         events = FlightEvents()
         solution = odeint(self.__f_main, u0, self.t, args=(rocket, events))
@@ -40,7 +51,7 @@ class TrajectorySolver:
         air = rocket.air
         launcher = rocket.launcher
 
-        if self.state == 5:
+        if self.state == SolverState.LANDING:
             return u*0.
 
         # --------------------------
@@ -74,7 +85,7 @@ class TrajectorySolver:
             # v_air[0]: 地球から見た機体座標系での機軸方向速度
             alpha = np.arccos(np.abs(v_air[0])/v_air_norm)
 
-        if self.state == 1 and launcher.is1stlugOff():
+        if self.state == SolverState.ON_RAIL and launcher.is1stlugOff():
             print('------------------')
             print('1stlug off at t=', t, '[s]')
             events.add_event(
@@ -82,8 +93,8 @@ class TrajectorySolver:
                 t, x=x.tolist(),
                 v=np.linalg.norm(v),
                 v_air=v_air_norm)
-            self.state = 1.1
-        elif self.state == 1.1 and launcher.is2ndlugOff():
+            self.state = SolverState.FIRST_LUG_OFF
+        elif self.state == SolverState.FIRST_LUG_OFF and launcher.is2ndlugOff():
             print('------------------')
             print('last lug off at t=', t, '[s]')
             events.add_event(
@@ -91,37 +102,35 @@ class TrajectorySolver:
                 t, x=x.tolist(),
                 v=np.linalg.norm(v),
                 v_air=v_air_norm)
-            self.state = 2
-        elif self.state <= 2 and t >= rocket.engine.thrust_cutoff_time:
+            self.state = SolverState.POWERED
+        elif self.state <= SolverState.POWERED and t >= rocket.engine.thrust_cutoff_time:
             print('------------------')
             print('MECO at t=', t, '[s]')
             events.add_event('MECO', t, x=x.tolist())
+            self.state = SolverState.COASTING
+        elif self.state == SolverState.COASTING:
             if rocket.hasDroguechute():
                 if rocket.isDroguechuteDeployed():
-                    if self.cons:
-                        print('------------------')
-                        print('drogue chute deployed at t=', t, '[s]')
-                        print('altitude:', x[2], '[m]')
-
-                    self.add_solver_log('drogue', t=t, x=x, v=v, q=q, omega=omega)
-                    self.state = 3.5 # ドローグ展開
+                    print('------------------')
+                    print('drogue chute deployed at t=', t, '[s]')
+                    events.add_event('drogue', t, x=x.tolist(), v_air=v_air_norm)
+                    self.state = SolverState.DROGUE_DEPLOYED
             else:
-                self.state = 3.5
-        elif self.state == 3 and rocket.isDroguechuteDeployed():
-            print('------------------')
-            print('drogue chute deployed at t=', t, '[s]')
-            events.add_event('drogue', t, x=x.tolist(), v_air=v_air_norm)
-            self.state = 3.5
-        elif self.state == 3.5 and rocket.isParachuteDeployed():
+                if rocket.hasParachute() and rocket.isParachuteDeployed():
+                    print('------------------')
+                    print('main parachute deployed at t=', t, '[s]')
+                    events.add_event('para', t, x=x.tolist(), v_air=v_air_norm)
+                    self.state = SolverState.PARACHUTE_DEPLOYED
+        elif self.state == SolverState.DROGUE_DEPLOYED and rocket.hasParachute() and rocket.isParachuteDeployed():
             print('------------------')
             print('main parachute deployed at t=', t, '[s]')
             events.add_event('para', t, x=x.tolist(), v_air=v_air_norm)
-            self.state = 4
-        elif self.state > 1 and self.state < 5 and x[2] < 0.0 and t > rocket.engine.thrust_startup_time:
+            self.state = SolverState.PARACHUTE_DEPLOYED
+        elif self.state > SolverState.ON_RAIL and self.state < SolverState.LANDING and x[2] < 0.0 and t > rocket.engine.thrust_startup_time:
             print('------------------')
             print('landing at t=', t, '[s]')
             events.add_event('landing', t, x=x.tolist(), v=np.linalg.norm(v))
-            self.state = 5
+            self.state = SolverState.LANDING
             return u*0
 
         # dx_dt:地球座標系での地球から見たロケットの速度
@@ -134,8 +143,6 @@ class TrajectorySolver:
             print('altitude:', x[2], '[m]')
             events.add_event('apogee', t, x=x.tolist())
             rocket.t_apogee = t
-
-            self.add_solver_log('apogee', t=t, x=x, v=v, q=q, omega=omega)
             self.apogee_flag = True
 
         # 重量・重心・慣性モーメント計算
@@ -178,7 +185,7 @@ class TrajectorySolver:
         g = env.g(x[2])
         #print('F_coriolis', env.Coriolis(v, Tbl))
 
-        if self.state <= 1.1:
+        if self.state <= SolverState.FIRST_LUG_OFF:
             # state <= 1.1: ラグがランチャーに拘束されている時
             # 運動方向は機体x方向(機軸方向)のみ
 
@@ -195,26 +202,21 @@ class TrajectorySolver:
             if dv_dt[0] < 0.0:
                 dv_dt[0] = 0.0
 
-        elif self.state == 2:
+        elif self.state == SolverState.POWERED:
             # ラグが2つともランチャーから離れており推力飛行をしている場合
             thrust_vec = np.array([rocket.engine.thrust(t), 0.0, 0.0])
             dv_dt = -np.cross(omega, v) + np.dot(Tbl, g) +\
                 env.Coriolis(v, Tbl) + (air_force + thrust_vec)/mass
 
-        elif self.state == 3 or self.state == 5:
+        elif self.state == SolverState.COASTING or self.state == SolverState.LANDING:
             # 慣性飛行時orランディング
             dv_dt = -np.cross(omega, v) + np.dot(Tbl, g) +\
                 env.Coriolis(v, Tbl) + air_force/mass
-        elif self.state == 3.5:
-            if rocket.hasDroguechute():
-                # ドローグシュート展開時
-                dv_dt = np.dot(Tbl, g) + env.Coriolis(v, Tbl) +\
-                    rocket.droguechute.DragForce(v_air, rho)/mass
-            else:
-                # 慣性飛行時orランディング
-                dv_dt = -np.cross(omega, v) + np.dot(Tbl, g) +\
-                    env.Coriolis(v, Tbl) + air_force/mass
-        elif self.state == 4:
+        elif self.state == SolverState.DROGUE_DEPLOYED:
+            # ドローグシュート展開時
+            dv_dt = np.dot(Tbl, g) + env.Coriolis(v, Tbl) +\
+                rocket.droguechute.DragForce(v_air, rho)/mass
+        elif self.state == SolverState.PARACHUTE_DEPLOYED:
             # メインパラシュート展開時
             dv_dt = np.dot(Tbl, g) + env.Coriolis(v, Tbl) +\
                 rocket.parachute.DragForce(v_air, rho)/mass
@@ -223,7 +225,7 @@ class TrajectorySolver:
         #    3. Atitude
         # ----------------------------
         # パラシュート展開時は回転を無視
-        if self.state == 3.5 or self.state == 4:
+        if self.state == SolverState.DROGUE_DEPLOYED or self.state == SolverState.PARACHUTE_DEPLOYED:
             omega *= 0.
         q_omega = quaternion.as_quat_array(np.r_[0.0, omega])
         dq_dt = quaternion.as_float_array(0.5*q*q_omega)
@@ -231,11 +233,11 @@ class TrajectorySolver:
         # ----------------------------
         #    4. Angular velocity
         # ----------------------------
-        if self.state == 1 or self.state == 3.5 or self.state == 4:
+        if self.state == SolverState.ON_RAIL or self.state == SolverState.DROGUE_DEPLOYED or self.state == SolverState.PARACHUTE_DEPLOYED:
             # both lug on the rail /parachute deployed -> no angular velocity change
             domega_dt = np.zeros(3)
         else:
-            if self.state == 1.1:
+            if self.state == SolverState.FIRST_LUG_OFF:
                 # 2nd lug on the rail. rotate around this point. Add addtitonal moment
                 lug2CG = np.array([rocket.lug_2nd - CG, 0., 0.])
                 # aerodynamic moment correction: move center of rotation from CG > 2nd lug (currently ignore damping correction)
