@@ -3,29 +3,29 @@ import numpy as np
 import json
 
 
-def dropPoint2Coordinate(drop_points, coord0, mag_dec=-7.53):
+def dropPoint2Coordinate(drop_points, coord0, mag_dec=0):
     # drop_point: [x, y] distances from launch point [m]
     # coord0: [lon, lat]
-    # mag_dec: magnetic deflection angle of lauch point(default: izu) [deg]
+    # mag_dec: magnetic deflection angle of lauch point(default: izu -7.53) [deg]
 
     # Earth Radius [m]
     earth_radius = 6378150.0
 
-    deg2rad = 2 * np.pi / 360.
+    deg2rad = np.pi / 180.
     lat2met = deg2rad * earth_radius
     lon2met = deg2rad * earth_radius * np.cos(np.deg2rad(coord0[1]))
+    point2coord = np.array([1/lon2met, 1/lat2met])
 
     # Set magnetic declination
-    mag_dec_rad = np.deg2rad(-mag_dec)
+    mag_dec_rad = np.deg2rad(mag_dec)
     mat_rot = np.array([[np.cos(mag_dec_rad), -1 * np.sin(mag_dec_rad)],
                         [np.sin(mag_dec_rad), np.cos(mag_dec_rad)]])
 
     drop_points_calibrated = np.dot(mat_rot, drop_points.T).T
 
-    drop_coords0 = np.zeros(np.shape(drop_points))
+    # drop_coords0 = np.zeros(np.shape(drop_points))
     # [lon, lat] of each drop points
-    drop_coords0[:, 0] = drop_points_calibrated[:, 0] / lon2met + coord0[0]
-    drop_coords0[:, 1] = drop_points_calibrated[:, 1] / lat2met + coord0[1]
+    drop_coords0 = drop_points_calibrated * point2coord + coord0
 
     drop_coords = [tuple(p) for p in drop_coords0]
     return drop_coords
@@ -144,8 +144,20 @@ def setKmlByJson(json_filename, kml=None, export_file=''):
     return kml
 
 
-def output_kml(drop_points, rail_coord, wind_speeds, regulations, filename):
-    # NOTE: 入力のrail_coordなどは[lat, lon]の順(TrajecSimu準拠)だが
+def output_kml(
+        drop_latlon:np.ndarray,
+        wind_speeds:np.ndarray,
+        wind_directions:np.ndarray,
+        regulations:dict,
+        filename:str
+    ):
+    '''
+    Arguments:
+        drop_latlon: ndarray (n_wind_speed, n_wind_directions, 2),
+        wind_speeds: ndarray (n_wind_speed)
+        wind_directions: @degree ndarray (n_wind_directions)
+    '''
+    # NOTE: 入力のdrop_latlonなどは[lat, lon]の順(TrajecSimu準拠)だが
     # kmlでは[lon, lat]の順なのでここでつかわれる関数はこの順です
     kml = simplekml.Kml()
 
@@ -154,16 +166,14 @@ def output_kml(drop_points, rail_coord, wind_speeds, regulations, filename):
     n_speeds = len(wind_speeds)
     for i, wind_speed in enumerate(wind_speeds):
         color_r = int(float(i / n_speeds) * 127) + 128
-        drop_coords = dropPoint2Coordinate(drop_points[i], rail_coord[::-1])
 
-        #directions = np.linspace(0, 360, len(drop_coords) - 1, endpoint=False)
-        #for j, direction in enumerate(directions):
-            #name = str(direction) + ' deg@' + str(wind_speed) + '[m/s]'
-            #kml.newpoint(name=name, coords=[drop_coords[j]])
+        for j, direction in enumerate(wind_directions):
+            name = f'{direction:.1f}deg@{wind_speed:.1f}[m/s]'
+            kml.newpoint(name=name, coords=[drop_latlon[i, j, ::-1]])
 
         line = kml.newlinestring(name=(str(wind_speed)+' [m/s]'))
         line.style.linestyle.color = simplekml.Color.rgb(color_r, 0, 0)
         line.style.linestyle.width = 2
-        line.coords = drop_coords
+        line.coords = drop_latlon[i, :, ::-1]
 
     kml.save(filename)

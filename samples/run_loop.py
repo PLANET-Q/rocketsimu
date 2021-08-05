@@ -57,7 +57,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("config", help="Parameter file path(json format)")
     parser.add_argument("azimuth", help="Number of azimuth of wind")
-    parser.add_argument("speed", help="range of speed of wind. [start:end:step] i.e: [0:8:1]")
+    parser.add_argument("speed", help="range of speed of wind. `start:end:step` i.e: 0:8:1")
     parser.add_argument("out", help="output directory")
     parser.add_argument("-k", "--kml", help="kml filename")
     parser.add_argument("-p", "--process", help="max number of processes to be used. laptop:4~8, desktop:8~16")
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     else:
         n_process = 1
 
-    azimuth_array = np.linspace(0, 2*np.pi, int(args.azimuth), endpoint=False)
+    azimuth_array = np.linspace(0, 360, int(args.azimuth), endpoint=False)
     speed_range = np.array(args.speed.split(':'), dtype='int32')
     speed_array = np.arange(speed_range[0], speed_range[1], speed_range[2])
     print('azimuth arrray: ', azimuth_array)
@@ -93,9 +93,10 @@ if __name__ == '__main__':
     for speed in speed_array:
         # 風向ごとにプロセス並列化して処理（ノートPCでは他のソフトの処理が重くなります）
         for azimuth in azimuth_array:
-            wind_std = [-speed * np.sin(azimuth), -speed * np.cos(azimuth), 0]
+            azimuth_rad = np.deg2rad(azimuth)
+            wind_std = [-speed * np.sin(azimuth_rad), -speed * np.cos(azimuth_rad), 0]
             params['wind_parameters']['wind_std'] = wind_std
-            output_name = f'{speed:.2f}_{np.rad2deg(azimuth):.2f}'
+            output_name = f'{speed:.2f}_{azimuth:.2f}'
             p = multiprocessing.Process(target=run_simu, args=(params, output_name, args.out))
             proc.append(p)
             p.start()
@@ -134,25 +135,25 @@ if __name__ == '__main__':
         speed_str = str(speed)
         judge_results[speed_str] = {}
         for theta, azimuth in enumerate(azimuth_array):
-            azimuth_deg = np.rad2deg(azimuth)
-            output_name = f'{speed:.2f}_{azimuth_deg:.2f}'
+            output_name = f'{speed:.2f}_{azimuth:.2f}'
             with open(os.path.join(args.out, f'{output_name}.json')) as f:
                 data = json.load(f)
-            scatter[r, theta] = np.array(data['landing']['x'])[:2]
+            scatter[r, theta] = np.array(data['landing']['coord'])
 
-            azimuth_str = f'{azimuth_deg:.1f}'
+            azimuth_str = f'{azimuth:.1f}'
             coord = data['landing']['coord']
             judge_results[speed_str][azimuth_str] = judge(coord[0], coord[1])
             idx += 1
         scatter[r, -1] = scatter[r, 0] # 楕円の始端と終端を結ぶ
-    print(judge_results)
+    # print(judge_results)
     judge_result_df = pd.DataFrame.from_dict(judge_results)
     print(judge_result_df)
 
     if args.kml:
-        # print('scatter:', scatter)
-        for item in regulations:
-            if item['name'] == 'rail':
-                latlon = item['center']
-        # print('lat lon:', latlon)
-        kmlplot.output_kml(scatter, latlon, speed_array, regulations, os.path.join(args.out, args.kml))
+        kmlplot.output_kml(
+            scatter,
+            speed_array,
+            azimuth_array,
+            regulations,
+            os.path.join(args.out, args.kml)
+        )
