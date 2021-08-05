@@ -1,22 +1,28 @@
-[
-  {
-    "name":"rail",
-    "type":"circle",
-    "center":[34.679730, 139.438373],
-    "radius":50.0,
-    "mode": "outside"
-  },
-  {
-    "name":"range",
-    "type":"circle",
-    "center":[34.661857 , 139.454987],
-    "radius":2500.0,
-    "mode": "inside"
-  },
-  {
-    "name":"Restricted Line",
-    "type":"line",
-    "point1":[34.684392 , 139.454677],
-    "point2":[34.667917, 139.428718]
-  }
-]
+{
+  "name": "izu_sea",
+  "latitude": 34.679730,
+  "longitude": 139.438373,
+  "magnetic_declination": 7.9,
+  "regulations": [
+    {
+      "name":"rail",
+      "type":"circle",
+      "center":[34.679730, 139.438373],
+      "radius":50.0,
+      "mode": "outside"
+    },
+    {
+      "name":"range",
+      "type":"circle",
+      "center":[34.661857 , 139.454987],
+      "radius":2500.0,
+      "mode": "inside"
+    },
+    {
+      "name":"Restricted Line",
+      "type":"line",
+      "point1":[34.684392 , 139.454677],
+      "point2":[34.667917, 139.428718]
+    }
+  ]
+}

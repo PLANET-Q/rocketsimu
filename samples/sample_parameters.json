@@ -24,6 +24,7 @@
         "cutoff_freq": 50
     },
     "environment": {
+        "location_filename": "location_parameters/izu_sea.json",
         "latitude": 34.679730,
         "longitude": 139.454987,
         "alt_launcher": 0.0

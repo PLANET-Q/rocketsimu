@@ -125,7 +125,7 @@ if __name__ == '__main__':
 
     # レギュレーション情報読み出し
     with open('location_parameters/noshiro.json') as f:
-        regulations = json.load(f)
+        regulations = json.load(f)['regulations']
     idx=0
     scatter = np.zeros((len(speed_array), len(azimuth_array)+1, 2))
     judge = InsideAreaJudgement(regulations)

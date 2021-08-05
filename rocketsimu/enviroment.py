@@ -36,14 +36,14 @@ def get_deg2rect_coeff(latitude):
 def xy_to_latlon(
         point_from_coord0:np.ndarray,
         latitude:float, longitude:float,
-        mag_deg:float=0.0
+        magnetic_declination_ccw_deg:float=0.0
     ):
     '''
     Arguments:
         point_from_coord0: np.ndarray ([N,]2),
         latitude:float, degree
         longitude:float, degree
-        mag_deg:float
+        magnetic_declination_ccw_deg:float, magnetic north direction ccw degree from true north
     '''
     deg2rad = np.pi / 180
 
@@ -54,7 +54,7 @@ def xy_to_latlon(
     point2coord = np.array([1/lon2met, 1/lat2met])
 
     # magnetic declination
-    mag_dec_rad = np.deg2rad(mag_deg)
+    mag_dec_rad = np.deg2rad(magnetic_declination_ccw_deg)
     magsin = np.sin(mag_dec_rad)
     magcos = np.cos(mag_dec_rad)
     mat_rot = np.array([[magcos, -magsin],
@@ -75,12 +75,12 @@ class Enviroment:
             latitude,
             longitude,
             altitude=0,
-            magnetic_gap_deg=0.0
+            magnetic_declination_ccw_deg=0.0
         ):
         self.latitude = latitude
         self.longitude = longitude
         self.alt_launcher = altitude
-        self.magnetic_gap_deg = magnetic_gap_deg
+        self.magnetic_declination_ccw_deg = magnetic_declination_ccw_deg
 
         # 射点緯度経度における楕円体半径[m]
         self.earth_r = calc_earth_radius_at(self.latitude)
@@ -105,7 +105,11 @@ class Enviroment:
         Arguments:
             point: np.ndarray ([N, ]2)
         '''
-        return xy_to_latlon(point, self.latitude, self.longitude, self.magnetic_gap_deg)
+        return xy_to_latlon(
+            point,
+            self.latitude, self.longitude,
+            self.magnetic_declination_ccw_deg
+        )
 
     def g(self, h):
         # TODO: 重力を高度hの関数にする。

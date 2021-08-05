@@ -88,9 +88,25 @@ def simulate(
 
     launcher_params = params['launcher']
     rocket.launcher = Launcher(launcher_params['rail_length'], launcher_params['azimuth'], launcher_params['elev_angle'])
-    env_params = params['environment']
-    rocket.enviroment = Enviroment(env_params['latitude'], env_params['longitude'], env_params['alt_launcher'])
 
+    env_params = params['environment']
+    if 'location_filename' in env_params:
+        with open(env_params['location_filename']) as f:
+            location_params = json.load(f)
+        lat = location_params['latitude']
+        lon = location_params['longitude']
+        alt = location_params.get('altitude', 0.0)
+        magnetic_declination_ccw_deg = location_params.get('magnetic_declination', 0.0)
+    else:
+        lat = env_params['latitude']
+        lon = env_params['longitude']
+        alt = env_params.get('altitude', 0.0)
+        magnetic_declination_ccw_deg = env_params.get('magnetic_declination', 0.0)
+
+    rocket.enviroment = Enviroment(
+        lat, lon, alt,
+        magnetic_declination_ccw_deg
+    )
     rocket.setRocketOnLauncher()
 
     solver = TrajectorySolver(max_t=params['simulation']['t_max'])
