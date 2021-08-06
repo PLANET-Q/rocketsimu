@@ -1,34 +1,7 @@
 import simplekml
 import numpy as np
 import json
-
-
-def dropPoint2Coordinate(drop_points, coord0, mag_dec=0):
-    # drop_point: [x, y] distances from launch point [m]
-    # coord0: [lon, lat]
-    # mag_dec: magnetic deflection angle of lauch point(default: izu -7.53) [deg]
-
-    # Earth Radius [m]
-    earth_radius = 6378150.0
-
-    deg2rad = np.pi / 180.
-    lat2met = deg2rad * earth_radius
-    lon2met = deg2rad * earth_radius * np.cos(np.deg2rad(coord0[1]))
-    point2coord = np.array([1/lon2met, 1/lat2met])
-
-    # Set magnetic declination
-    mag_dec_rad = np.deg2rad(mag_dec)
-    mat_rot = np.array([[np.cos(mag_dec_rad), -1 * np.sin(mag_dec_rad)],
-                        [np.sin(mag_dec_rad), np.cos(mag_dec_rad)]])
-
-    drop_points_calibrated = np.dot(mat_rot, drop_points.T).T
-
-    # drop_coords0 = np.zeros(np.shape(drop_points))
-    # [lon, lat] of each drop points
-    drop_coords0 = drop_points_calibrated * point2coord + coord0
-
-    drop_coords = [tuple(p) for p in drop_coords0]
-    return drop_coords
+from rocketsimu.enviroment import xy_to_latlon
 
 
 def getCirclePlot(center_coord, radius_meter):
@@ -38,7 +11,12 @@ def getCirclePlot(center_coord, radius_meter):
     x = np.cos(theta) * radius_meter
     y = np.sin(theta) * radius_meter
     points = np.c_[x, y]
-    return dropPoint2Coordinate(points, center_coord)
+    return xy_to_latlon(
+        points,
+        center_coord[1],
+        center_coord[0],
+        magnetic_declination_ccw_deg=0
+    )
 
 
 def setKmlCircle(
@@ -69,11 +47,15 @@ def setKmlCircle(
     return point, pol
 
 
-def setKmlByDicts(dicts, kml=None):
+def setKmlByDicts(
+        location_config:dict,
+        kml=None,
+    ):
     if kml is None:
         kml = simplekml.Kml()
 
-    for dict in dicts:
+    regulations = location_config['regulations']
+    for dict in regulations:
         if 'name' in dict:
             name = dict['name']
         else:
@@ -100,7 +82,10 @@ def setKmlByDicts(dicts, kml=None):
                     is_infill = True
 
             point, pol = setKmlCircle(
-                            kml, point, radius, name=name,
+                            kml,
+                            point,
+                            radius,
+                            name=name,
                             plot_center=is_plot_center, infill=is_infill)
 
             pol.style.linestyle.width = 4
@@ -148,7 +133,7 @@ def output_kml(
         drop_latlon:np.ndarray,
         wind_speeds:np.ndarray,
         wind_directions:np.ndarray,
-        regulations:dict,
+        location_config:dict,
         filename:str
     ):
     '''
@@ -161,7 +146,7 @@ def output_kml(
     # kmlでは[lon, lat]の順なのでここでつかわれる関数はこの順です
     kml = simplekml.Kml()
 
-    setKmlByDicts(regulations, kml)
+    setKmlByDicts(location_config, kml)
 
     n_speeds = len(wind_speeds)
     for i, wind_speed in enumerate(wind_speeds):
