@@ -1,17 +1,21 @@
+from typing import Dict
 from rocketsimu.judge_inside import InsideAreaJudgement
 import rocketsimu.simulator as simu
 import argparse
-import multiprocessing
+from multiprocessing import Pool
 import os
 import json
 import numpy as np
 import pandas as pd
-import quaternion
+import time
+from copy import deepcopy
 
 from lib import kmlplot
 from lib.numpy2json import NumpyEncoder
+from lib.export_loop_summary import export_loop_summary
 
 def run_simu(params:dict, idx, foldername='tmp'):
+    t_start = time.time()
     print(f'[PID:{os.getpid()}] Start')
 
     # シミュレーション
@@ -51,7 +55,35 @@ def run_simu(params:dict, idx, foldername='tmp'):
     df = df.set_index('t')
     df.to_csv(os.path.join(foldername, str(idx)+'.csv')) #弾道表
 
-    print(f'[PID:{os.getpid()}] End')
+    t_end = time.time()
+    print(f'[PID:{os.getpid()}] End. {t_end - t_start}[s]')
+    return {
+        'name': idx,
+        'events': log,
+        'trajectory': df
+    }
+
+
+def simulate_for_all_params(
+    all_params:Dict[str, Dict],
+    output_dir:str,
+    n_workers:int=2
+):
+    arguments = []
+    for name, params in all_params.items():
+        arguments.append(
+            (params, name, output_dir)
+        )
+
+    with Pool(n_workers) as pool:
+        results = pool.starmap(run_simu, arguments)
+
+    ret = {}
+    for result in results:
+        ret[result['name']] = result['events']
+
+    return ret
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -59,14 +91,14 @@ if __name__ == '__main__':
     parser.add_argument("azimuth", help="Number of azimuth of wind")
     parser.add_argument("speed", help="range of speed of wind. `start:end:step` i.e: 0:8:1")
     parser.add_argument("out", help="output directory")
-    parser.add_argument("-k", "--kml", help="kml filename")
-    parser.add_argument("-p", "--process", help="max number of processes to be used. laptop:4~8, desktop:8~16")
+    parser.add_argument("-k", "--kml", help="kml filename. default=`result.kml`")
+    parser.add_argument("-p", "--process", help="max number of processes to be used. typ. laptop:4~8, desktop:8~16. default=2")
     args = parser.parse_args()
 
     # パラメータ読み込み
     print('Parmeter file:', args.config)
     with open(args.config) as f:
-        params = json.load(f)
+        base_params = json.load(f)
 
     # 出力先フォルダを作成
     if not os.path.exists(args.out):
@@ -75,85 +107,101 @@ if __name__ == '__main__':
 
     # 出力フォルダにパラメータを保存
     with open(os.path.join(args.out, 'param_origin.json'), 'w') as f:
-        json.dump(params, f, indent=2)
+        json.dump(base_params, f, indent=2)
 
     # プロセス数
     if args.process:
         n_process = int(args.process)
     else:
-        n_process = 1
+        n_process = 2
 
+    t_start = time.time()
     azimuth_array = np.linspace(0, 360, int(args.azimuth), endpoint=False)
     speed_range = np.array(args.speed.split(':'), dtype='int32')
-    speed_array = np.arange(speed_range[0], speed_range[1], speed_range[2])
+    speed_array = np.arange(speed_range[0], speed_range[1]+1, speed_range[2])
     print('azimuth arrray: ', azimuth_array)
     print('speed array:', speed_array)
-    proc = []
-    idx = 0
+    # proc = []
+    loop_params = {}
     for speed in speed_array:
-        # 風向ごとにプロセス並列化して処理（ノートPCでは他のソフトの処理が重くなります）
         for azimuth in azimuth_array:
             azimuth_rad = np.deg2rad(azimuth)
             wind_std = [-speed * np.sin(azimuth_rad), -speed * np.cos(azimuth_rad), 0]
-            params['wind_parameters']['wind_std'] = wind_std
-            output_name = f'{speed:.2f}_{azimuth:.2f}'
-            p = multiprocessing.Process(target=run_simu, args=(params, output_name, args.out))
-            proc.append(p)
-            p.start()
-            idx += 1
+            for mode in ['para', 'bal']:
+                output_name = f'{speed:.2f}_{azimuth:.2f}_{mode}'
+                params = deepcopy(base_params)
+                params['wind_parameters']['wind_std'] = wind_std
+                if mode == 'bal':
+                    params['parachutes']['para']['enable'] = False
+                    params['parachutes']['drogue']['enable'] = False
+                loop_params[output_name] = params
 
-            # 終了したプロセスは削除
-            for i, _p in enumerate(proc):
-                if not _p.is_alive():
-                    proc.pop(i)
+    # print(loop_params)
+    # プロセス並列化して処理（ノートPCでは他のソフトの処理が重くなります）
+    results = simulate_for_all_params(loop_params, args.out, n_workers=n_process)
+    t_end = time.time()
 
-            # 使用プロセス数が上限に達したらプロセス終了を待つ
-            if len(proc) >= n_process:
-                # いずれかのプロセスの終了を待つ
-                loopf=True
-                while loopf:
-                    for i, _p in enumerate(proc):
-                        if not _p.is_alive():
-                            proc.pop(i)
-                            loopf=False
-                            break
-
-    # 全プロセスの処理終了を待つ
-    for p in proc:
-        p.join()
-    proc = []
+    print(f'process end: {t_end - t_start}[s]')
+    # exit()
 
     # レギュレーション情報読み出し
-    with open('location_parameters/noshiro.json') as f:
-        regulations = json.load(f)['regulations']
-    idx=0
-    scatter = np.zeros((len(speed_array), len(azimuth_array)+1, 2))
-    judge = InsideAreaJudgement(regulations)
+    location_filename = params['environment']['location_filename']
+    with open(location_filename) as f:
+        location_config = json.load(f)
+
+    scatter = np.zeros((len(speed_array), len(azimuth_array)+1, 2, 2))
+    judge = InsideAreaJudgement(location_config['regulations'])
     # judge_results = np.zeros((len(speed_array), len(azimuth_array)), dtype=bool)
-    judge_results = {}
+    judge_results = np.zeros((len(speed_array), len(azimuth_array), 2))
     for r, speed in enumerate(speed_array):
-        speed_str = str(speed)
-        judge_results[speed_str] = {}
         for theta, azimuth in enumerate(azimuth_array):
-            output_name = f'{speed:.2f}_{azimuth:.2f}'
-            with open(os.path.join(args.out, f'{output_name}.json')) as f:
-                data = json.load(f)
-            scatter[r, theta] = np.array(data['landing']['coord'])
+            for i, mode in enumerate(['para', 'bal']):
+                name = f'{speed:.2f}_{azimuth:.2f}_{mode}'
+                coord = results[name]['landing']['coord']
+                scatter[r, theta, i] = np.array(coord)
+                judge_results[r, theta, i] = int(judge(coord[0], coord[1]))
+        scatter[r, -1] = scatter[r, 0] # 落下分散円の始端と終端を結ぶ
 
-            azimuth_str = f'{azimuth:.1f}'
-            coord = data['landing']['coord']
-            judge_results[speed_str][azimuth_str] = judge(coord[0], coord[1])
-            idx += 1
-        scatter[r, -1] = scatter[r, 0] # 楕円の始端と終端を結ぶ
-    # print(judge_results)
-    judge_result_df = pd.DataFrame.from_dict(judge_results)
-    print(judge_result_df)
+    all_judge_results = np.where(judge_results[:, :, 0] * judge_results[:, :, 1] == 1, 'Go', 'Nogo')
+    para_judge_df = pd.DataFrame(judge_results[:, :, 0], index=speed_array, columns=azimuth_array)
+    bal_judge_df = pd.DataFrame(judge_results[:, :, 1], index=speed_array, columns=azimuth_array)
+    all_judge_df = pd.DataFrame(all_judge_results[:, :], index=speed_array, columns=azimuth_array)
+    print(all_judge_df)
 
-    if args.kml:
-        kmlplot.output_kml(
-            scatter,
-            speed_array,
-            azimuth_array,
-            regulations,
-            os.path.join(args.out, args.kml)
+    # output Go/Nogo judgement and other flight summaries to excel file
+    with pd.ExcelWriter(os.path.join(args.out, 'result.xlsx')) as writer:
+        all_judge_df.to_excel(writer, 'Go_NoGo')
+        event_files_fmt = args.out+'/{:.2f}_{:.2f}_para.json'
+        # print(event_files_fmt)
+        export_loop_summary(
+            writer,
+            event_files_fmt=event_files_fmt,
+            speed_array=speed_array,
+            direction_array=azimuth_array
         )
+        bal_judge_df.to_excel(writer, '弾道判定')
+        para_judge_df.to_excel(writer, 'パラ判定')
+
+    # kml output
+    if args.kml:
+        kml_filename = args.kml
+    else:
+        kml_filename = 'result.kml'
+
+    kmlplot.output_kml(
+        scatter[:, :, 0],
+        speed_array,
+        azimuth_array,
+        location_config,
+        os.path.join(args.out, 'result_para.kml')
+    )
+    kmlplot.output_kml(
+        scatter[:, :, 1],
+        speed_array,
+        azimuth_array,
+        location_config,
+        os.path.join(args.out, 'result_bal.kml')
+    )
+
+    t_export_end = time.time()
+    print(f'export: {t_export_end - t_end}[s]')
