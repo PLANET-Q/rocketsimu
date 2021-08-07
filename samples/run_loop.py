@@ -24,8 +24,8 @@ def run_simu(params:dict, idx, foldername='tmp'):
 
     print(f'[PID:{os.getpid()}] landing XYZ:', log['landing']['x'])
     log.update({'loop_id': idx})
-    with open(os.path.join(foldername, str(idx)+'.json'), 'w') as f:
-        json.dump(log, f, indent=2, cls=NumpyEncoder)
+    # with open(os.path.join(foldername, str(idx)+'.json'), 'w') as f:
+    #     json.dump(log, f, indent=2, cls=NumpyEncoder)
 
     t = result.t
     x = result.x
@@ -34,7 +34,6 @@ def run_simu(params:dict, idx, foldername='tmp'):
     omega = result.w
 
     # 結果を弾道履歴表(csv), パラメータ(json), 特異点ログ(json)に分けてファイル出力
-    # q_float = quaternion.as_float_array(q)
     trajectory = {
         't': t,
         'x': x[0],
@@ -71,9 +70,7 @@ def simulate_for_all_params(
 ):
     arguments = []
     for name, params in all_params.items():
-        arguments.append(
-            (params, name, output_dir)
-        )
+        arguments.append((params, name, output_dir))
 
     with Pool(n_workers) as pool:
         results = pool.starmap(run_simu, arguments)
@@ -91,7 +88,7 @@ if __name__ == '__main__':
     parser.add_argument("azimuth", help="Number of azimuth of wind")
     parser.add_argument("speed", help="range of speed of wind. `start:end:step` i.e: 0:8:1")
     parser.add_argument("out", help="output directory")
-    parser.add_argument("-k", "--kml", help="kml filename. default=`result.kml`")
+    # parser.add_argument("-k", "--kml", help="kml filename. default=`result.kml`")
     parser.add_argument("-p", "--process", help="max number of processes to be used. typ. laptop:4~8, desktop:8~16. default=2")
     args = parser.parse_args()
 
@@ -121,7 +118,6 @@ if __name__ == '__main__':
     speed_array = np.arange(speed_range[0], speed_range[1]+1, speed_range[2])
     print('azimuth arrray: ', azimuth_array)
     print('speed array:', speed_array)
-    # proc = []
     loop_params = {}
     for speed in speed_array:
         for azimuth in azimuth_array:
@@ -136,13 +132,13 @@ if __name__ == '__main__':
                     params['parachutes']['drogue']['enable'] = False
                 loop_params[output_name] = params
 
-    # print(loop_params)
     # プロセス並列化して処理（ノートPCでは他のソフトの処理が重くなります）
-    results = simulate_for_all_params(loop_params, args.out, n_workers=n_process)
+    simulation_output_dir = os.path.join(args.out, 'all')
+    os.makedirs(simulation_output_dir, exist_ok=True)
+    results = simulate_for_all_params(loop_params, simulation_output_dir, n_workers=n_process)
     t_end = time.time()
 
     print(f'process end: {t_end - t_start}[s]')
-    # exit()
 
     # レギュレーション情報読み出し
     location_filename = params['environment']['location_filename']
@@ -151,7 +147,6 @@ if __name__ == '__main__':
 
     scatter = np.zeros((len(speed_array), len(azimuth_array)+1, 2, 2))
     judge = InsideAreaJudgement(location_config['regulations'])
-    # judge_results = np.zeros((len(speed_array), len(azimuth_array)), dtype=bool)
     judge_results = np.zeros((len(speed_array), len(azimuth_array), 2))
     for r, speed in enumerate(speed_array):
         for theta, azimuth in enumerate(azimuth_array):
@@ -162,32 +157,29 @@ if __name__ == '__main__':
                 judge_results[r, theta, i] = int(judge(coord[0], coord[1]))
         scatter[r, -1] = scatter[r, 0] # 落下分散円の始端と終端を結ぶ
 
-    all_judge_results = np.where(judge_results[:, :, 0] * judge_results[:, :, 1] == 1, 'Go', 'Nogo')
     para_judge_df = pd.DataFrame(judge_results[:, :, 0], index=speed_array, columns=azimuth_array)
     bal_judge_df = pd.DataFrame(judge_results[:, :, 1], index=speed_array, columns=azimuth_array)
+
+    all_judge_results = np.where(judge_results[:, :, 0] * judge_results[:, :, 1] == 1, 'Go', 'Nogo')
     all_judge_df = pd.DataFrame(all_judge_results[:, :], index=speed_array, columns=azimuth_array)
     print(all_judge_df)
 
     # output Go/Nogo judgement and other flight summaries to excel file
     with pd.ExcelWriter(os.path.join(args.out, 'result.xlsx')) as writer:
         all_judge_df.to_excel(writer, 'Go_NoGo')
-        event_files_fmt = args.out+'/{:.2f}_{:.2f}_para.json'
+        event_names_fmt ='{:.2f}_{:.2f}_para'
         # print(event_files_fmt)
         export_loop_summary(
             writer,
-            event_files_fmt=event_files_fmt,
+            results,
+            event_names_fmt=event_names_fmt,
             speed_array=speed_array,
             direction_array=azimuth_array
         )
         bal_judge_df.to_excel(writer, '弾道判定')
         para_judge_df.to_excel(writer, 'パラ判定')
 
-    # kml output
-    if args.kml:
-        kml_filename = args.kml
-    else:
-        kml_filename = 'result.kml'
-
+    # Output kml
     kmlplot.output_kml(
         scatter[:, :, 0],
         speed_array,

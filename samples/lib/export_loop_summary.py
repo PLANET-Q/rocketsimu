@@ -5,7 +5,8 @@ import pandas as pd
 
 def export_loop_summary(
         writer:pd.ExcelWriter,
-        event_files_fmt:str,
+        events_data:dict,
+        event_names_fmt:str,
         speed_array:Iterable,
         direction_array:Iterable
     ):
@@ -30,8 +31,7 @@ def export_loop_summary(
         # max_accelation[speed_str] = {}
         for d, direction in  enumerate(direction_array):
             direction_str = f'{direction:.1f}'
-            with open(event_files_fmt.format(speed, direction)) as f:
-                event_data = json.load(f)
+            event_data = events_data[event_names_fmt.format(speed, direction)]
             max_alt[speed_str][direction_str] = event_data['apogee']['x'][2]
             max_v[speed_str][direction_str] = event_data['max_air_speed']['air_speed']
             max_mach[speed_str][direction_str] = event_data['max_mach']['mach']
