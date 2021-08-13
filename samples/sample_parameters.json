@@ -25,9 +25,11 @@
     },
     "environment": {
         "location_filename": "location_parameters/izu_sea.json",
-        "latitude": 34.679730,
-        "longitude": 139.454987,
-        "alt_launcher": 0.0
+        "_":{
+            "latitude": 34.679730,
+            "longitude": 139.454987,
+            "alt_launcher": 0.0
+        }
     },
     "launcher": {
         "azimuth": 150.0,
@@ -65,7 +67,8 @@
         "wind1": {
             "wind_model": "constant",
             "wind_parameters":{
-                "wind_std": [8.0, 15.0, 0.0]
+                "wind_std_speed": 3,
+                "wind_std_direction": 120
             }
         },
         "kind": "linear",

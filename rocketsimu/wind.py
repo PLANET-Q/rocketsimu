@@ -52,7 +52,7 @@ class HybridWind(Wind):
         return self.wind0(h) * (1.0 - self.__w(h)) + self.wind1(h) * self.__w(h)
 
 
-class WindPower(Wind):
+class PowerWind(Wind):
     def __init__(self, z0, n, wind_std):
         '''
         wind_std: [E2W, N2S, UP]
@@ -70,14 +70,14 @@ class WindPower(Wind):
         return wind_vec
 
 
-class WindConstant(Wind):
+class ConstantWind(Wind):
     def __init__(self, wind=np.array([0., 0., 0.])):
         self.wind_std = np.array(wind)
     def wind(self, h):
         return self.wind_std
 
 
-class WindForecast(Wind):
+class CSVWind(Wind):
     def __init__(self, forecast_filename):
         input_data = np.loadtxt(forecast_filename, comments=['#','$','%'], delimiter=',')
         self.alt_axis = input_data[:, 0]
@@ -122,13 +122,23 @@ def createWind(wind_model, params_dict):
     OUTPUT
         wind instance
     '''
+    if 'wind_std' in params_dict:
+        wind_std = params_dict['wind_std']
+    else:
+        speed = params_dict['wind_std_speed']
+        deg = params_dict['wind_std_direction']
+        wind_std = [
+            -speed * np.sin(np.deg2rad(deg)),
+            -speed * np.cos(np.deg2rad(deg)),
+            0
+        ]
+
     if wind_model == 'constant':
-        return WindConstant(params_dict['wind_std'])
+        return ConstantWind(wind_std)
     elif wind_model == 'power':
-        return WindPower(params_dict['z0'], params_dict['n'], params_dict['wind_std'])
-    elif wind_model == 'forecast':
-        return
-        #return WindForecast()
+        return PowerWind(params_dict['z0'], params_dict['n'], wind_std)
+    elif wind_model == 'file':
+        return CSVWind(params_dict['path'])
     elif wind_model == 'hybrid':
         '''
         Hybridモデルで合成する2つの風モデル：wind0, wind1も
