@@ -146,7 +146,8 @@ if __name__ == '__main__':
         location_config = json.load(f)
 
     scatter = np.zeros((len(speed_array), len(azimuth_array)+1, 2, 2))
-    judge = InsideAreaJudgement(location_config['regulations'])
+    rail_latlng = [location_config['latitude'], location_config['longitude']]
+    judge = InsideAreaJudgement(location_config['regulations'], rail_latlng=rail_latlng)
     judge_results = np.zeros((len(speed_array), len(azimuth_array), 2))
     for r, speed in enumerate(speed_array):
         for theta, azimuth in enumerate(azimuth_array):

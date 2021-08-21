@@ -22,7 +22,8 @@
       "name":"Restricted Line",
       "type":"line",
       "point1":[40.23665, 140.00579],
-      "point2":[40.25126, 140.00929]
+      "point2":[40.25126, 140.00929],
+      "mode": "over"
     }
   ]
 }
